@@ -1,6 +1,6 @@
 [project]
-name = "comfyui-fl-path-animator"
-description = "Interactive path animator with visual editor for creating animated shapes that follow user-drawn paths. WAN ATI compatible for stable video generation."
+name = "comfyui-wanmove-path-animator"
+description = "Interactive path animator with visual editor for creating animated shapes that follow user-drawn paths. Wan Move compatible for stable video generation."
 version = "1.0.6"
 license = { file = "LICENSE.txt" }
 dependencies = [
@@ -9,10 +9,9 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/filliptm/ComfyUI_FL-Path-Animator.git"
-Homepage = "https://www.patreon.com/c/Machinedelusions"
+Repository = "https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator"
 
 [tool.comfy]
-PublisherId = "machinedelusions"
-DisplayName = "FL Path Animator"
+PublisherId = "brbbbq"
+DisplayName = "WanMove Path Animator"
 Icon = ""

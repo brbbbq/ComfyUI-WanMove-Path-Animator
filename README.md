@@ -1,4 +1,4 @@
-# FL Path Animator
+# WanMove Path Animator
 
 A standalone ComfyUI custom node for creating animated shapes that follow user-drawn paths.
 
@@ -9,7 +9,6 @@ A standalone ComfyUI custom node for creating animated shapes that follow user-d
   - **Motion Paths** - Draw continuous paths for shapes to follow over time
   - **Static Anchors** - Single-point paths for stationary shapes
 - **Background Image Support** - Load or paste reference images to draw paths on
-- **WAN ATI Compatible** - Outputs 121-point resampled coordinates for stable AI video generation
 - **Visual Effects** - Blur, trails, rotation, borders, and custom colors
 - **Multiple Shapes** - Circle, square, triangle, hexagon, and star
 
@@ -18,7 +17,7 @@ A standalone ComfyUI custom node for creating animated shapes that follow user-d
 1. Clone or download this repository into your ComfyUI custom_nodes folder:
 ```bash
 cd ComfyUI/custom_nodes/
-git clone https://github.com/machinedelusions/ComfyUI_FL-Path-Animator.git
+git clone https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator
 ```
 
 2. Restart ComfyUI
@@ -27,7 +26,7 @@ git clone https://github.com/machinedelusions/ComfyUI_FL-Path-Animator.git
 
 ### Basic Workflow
 
-1. Add the "FL Path Animator" node to your workflow
+1. Add the "WanMove Path Animator" node to your workflow
 2. Click the **"Edit Paths"** button to open the path editor
 3. Use the toolbar to:
    - **✏️ Pencil** - Draw motion paths (hold SHIFT for straight lines)
@@ -68,18 +67,18 @@ git clone https://github.com/machinedelusions/ComfyUI_FL-Path-Animator.git
 
 1. **IMAGE** - Batch of rendered frames (shape following paths)
 2. **MASK** - Alpha masks extracted from red channel
-3. **STRING** - WAN ATI-compatible coordinate data (121 points per path)
+3. **STRING** - ~~WAN ATI-compatible coordinate data (121 points per path)~~
 
-## WAN ATI Integration
+## ~~WAN ATI Integration~~
 
-The coordinate output is specifically formatted for WAN (Warp and Noise) ATI video generation:
+~~The coordinate output is specifically formatted for WAN (Warp and Noise) ATI video generation:~~
 
-- Each path is resampled to exactly 121 points
-- Arc-length parameterization ensures smooth motion
-- Static points are repeated 121 times for stable anchors
-- Output format: `[[{x, y}, ...], [{x, y}, ...]]` (array of tracks)
+- ~~Each path is resampled to exactly 121 points~~
+- ~~Arc-length parameterization ensures smooth motion~~
+- ~~Static points are repeated 121 times for stable anchors~~
+- ~~Output format: `[[{x, y}, ...], [{x, y}, ...]]` (array of tracks)~~
 
-This prevents jitter and warping in AI-generated video by providing consistent tracking data.
+~~This prevents jitter and warping in AI-generated video by providing consistent tracking data.~~
 
 ## Path Editor Tools
 
@@ -125,11 +124,4 @@ MIT License - See LICENSE file for details
 
 ## Credits
 
-Created by Machine Delusions for the Fill-Nodes pack.
-Extracted as standalone node for easier distribution.
-
-## Support
-
-For issues, feature requests, or questions:
-- GitHub Issues: https://github.com/machinedelusions/ComfyUI_FL-Path-Animator/issues
-- Patreon: https://www.patreon.com/c/Machinedelusions
+Based on FL Path Animator by Machine Delusions for the Fill-Nodes pack.

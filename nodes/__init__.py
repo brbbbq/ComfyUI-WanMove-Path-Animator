@@ -1,7 +1,7 @@
 """
-FL Path Animator Nodes
+WanMove Path Animator Nodes
 """
 
-from .FL_PathAnimator import FL_PathAnimator
+from .WanMove_PathAnimator import WanMove_PathAnimator
 
-__all__ = ['FL_PathAnimator']
+__all__ = ['WanMove_PathAnimator']

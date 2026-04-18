@@ -1,8 +1,8 @@
 /**
- * File: FL_PathAnimator.js
- * Project: ComfyUI_FL-Path-Animator
+ * File: WanMove_PathAnimator.js
+ * Project: ComfyUI-WanMove-Path-Animator
  *
- * Interactive path animator with modal drawing editor
+ * Interactive path animator with drawing editor
  */
 
 import { app } from "../../../../../scripts/app.js";
@@ -47,13 +47,13 @@ function moveWidgetToTop(node, widget) {
 }
 
 app.registerExtension({
-    name: "FillNodes.PathAnimator",
+    name: "WanMove.PathAnimator",
     async nodeCreated(node) {
-        if (node.comfyClass === "FL_PathAnimator") {
+        if (node.comfyClass === "WanMove_PathAnimator") {
             // Find the paths_data widget immediately
             const pathsDataWidget = node.widgets.find(w => w.name === "paths_data");
             if (!pathsDataWidget) {
-                console.error("FL_PathAnimator: 'paths_data' widget not found!");
+                console.error("WanMove_PathAnimator: 'paths_data' widget not found!");
                 return;
             }
 
@@ -180,7 +180,7 @@ class PathEditorModal {
 
             // Ctrl+V to paste image from clipboard
             if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
-                console.log('FL_PathAnimator: Ctrl+V detected');
+                console.log('WanMove_PathAnimator: Ctrl+V detected');
                 e.preventDefault();
                 e.stopPropagation();
                 // Try to read from clipboard using modern API
@@ -195,7 +195,7 @@ class PathEditorModal {
         };
 
         this.pasteHandler = (e) => {
-            console.log('FL_PathAnimator: Paste handler called');
+            console.log('WanMove_PathAnimator: Paste handler called');
             e.preventDefault();
             e.stopPropagation();
             this.handlePaste(e);
@@ -204,7 +204,7 @@ class PathEditorModal {
         document.addEventListener('keydown', this.keydownHandler);
         document.addEventListener('keyup', this.keyupHandler);
 
-        console.log('FL_PathAnimator: Keyboard handlers registered');
+        console.log('WanMove_PathAnimator: Keyboard handlers registered');
     }
 
     attachPasteListener() {
@@ -212,7 +212,7 @@ class PathEditorModal {
         if (this.container) {
             this.container.addEventListener('paste', this.pasteHandler);
             document.addEventListener('paste', this.pasteHandler);
-            console.log('FL_PathAnimator: Paste handlers attached to container and document');
+            console.log('WanMove_PathAnimator: Paste handlers attached to container and document');
         }
     }
 
@@ -233,24 +233,24 @@ class PathEditorModal {
     }
 
     async pasteFromClipboard() {
-        console.log('FL_PathAnimator: Attempting to read from clipboard using Clipboard API');
+        console.log('WanMove_PathAnimator: Attempting to read from clipboard using Clipboard API');
 
         try {
             // Check if Clipboard API is available
             if (!navigator.clipboard || !navigator.clipboard.read) {
-                console.log('FL_PathAnimator: Clipboard API not available, falling back to paste event');
+                console.log('WanMove_PathAnimator: Clipboard API not available, falling back to paste event');
                 return;
             }
 
             const clipboardItems = await navigator.clipboard.read();
-            console.log('FL_PathAnimator: Read', clipboardItems.length, 'items from clipboard');
+            console.log('WanMove_PathAnimator: Read', clipboardItems.length, 'items from clipboard');
 
             for (const clipboardItem of clipboardItems) {
-                console.log('FL_PathAnimator: Clipboard item types:', clipboardItem.types);
+                console.log('WanMove_PathAnimator: Clipboard item types:', clipboardItem.types);
 
                 for (const type of clipboardItem.types) {
                     if (type.startsWith('image/')) {
-                        console.log('FL_PathAnimator: Found image type:', type);
+                        console.log('WanMove_PathAnimator: Found image type:', type);
                         const blob = await clipboardItem.getType(type);
                         this.loadImageFromBlob(blob);
                         return; // Only load first image
@@ -258,15 +258,15 @@ class PathEditorModal {
                 }
             }
 
-            console.log('FL_PathAnimator: No image found in clipboard');
+            console.log('WanMove_PathAnimator: No image found in clipboard');
         } catch (err) {
-            console.error('FL_PathAnimator: Error reading from clipboard:', err);
-            console.log('FL_PathAnimator: You may need to grant clipboard permission');
+            console.error('WanMove_PathAnimator: Error reading from clipboard:', err);
+            console.log('WanMove_PathAnimator: You may need to grant clipboard permission');
         }
     }
 
     loadImageFromBlob(blob) {
-        console.log('FL_PathAnimator: Loading image from blob, size:', blob.size);
+        console.log('WanMove_PathAnimator: Loading image from blob, size:', blob.size);
         const reader = new FileReader();
         reader.onload = (event) => {
             const img = new Image();
@@ -280,42 +280,42 @@ class PathEditorModal {
                 this.pathsDataWidget._cachedBackgroundImage = event.target.result;
 
                 this.render();
-                console.log('FL_PathAnimator: Image pasted successfully -', img.width, 'x', img.height);
+                console.log('WanMove_PathAnimator: Image pasted successfully -', img.width, 'x', img.height);
             };
             img.onerror = () => {
-                console.error('FL_PathAnimator: Failed to load pasted image');
+                console.error('WanMove_PathAnimator: Failed to load pasted image');
             };
             img.src = event.target.result;
         };
         reader.onerror = () => {
-            console.error('FL_PathAnimator: Failed to read image blob');
+            console.error('WanMove_PathAnimator: Failed to read image blob');
         };
         reader.readAsDataURL(blob);
     }
 
     handlePaste(e) {
-        console.log('FL_PathAnimator: Paste event triggered');
+        console.log('WanMove_PathAnimator: Paste event triggered');
 
         // Get clipboard items
         const items = e.clipboardData?.items;
         if (!items) {
-            console.log('FL_PathAnimator: No clipboard items found');
+            console.log('WanMove_PathAnimator: No clipboard items found');
             return;
         }
 
-        console.log('FL_PathAnimator: Clipboard has', items.length, 'items');
+        console.log('WanMove_PathAnimator: Clipboard has', items.length, 'items');
 
         // Look for image items
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
-            console.log('FL_PathAnimator: Item', i, 'type:', item.type);
+            console.log('WanMove_PathAnimator: Item', i, 'type:', item.type);
 
             // Check if item is an image
             if (item.type.indexOf('image') !== -1) {
-                console.log('FL_PathAnimator: Found image in clipboard via paste event');
+                console.log('WanMove_PathAnimator: Found image in clipboard via paste event');
                 const blob = item.getAsFile();
                 if (!blob) {
-                    console.log('FL_PathAnimator: Failed to get blob from clipboard item');
+                    console.log('WanMove_PathAnimator: Failed to get blob from clipboard item');
                     continue;
                 }
 
@@ -360,7 +360,7 @@ class PathEditorModal {
     createModal() {
         // Create modal overlay
         this.overlay = document.createElement('div');
-        this.overlay.className = 'fl-path-editor-overlay';
+        this.overlay.className = 'wanmove-path-editor-overlay';
         this.overlay.style.cssText = `
             position: fixed;
             top: 0;
@@ -378,7 +378,7 @@ class PathEditorModal {
 
         // Create modal container
         this.container = document.createElement('div');
-        this.container.className = 'fl-path-editor-container';
+        this.container.className = 'wanmove-path-editor-container';
         this.container.tabIndex = 0; // Make container focusable for paste events
         this.container.style.cssText = `
             background: linear-gradient(145deg, #2d2d2d, #252525);
@@ -1759,9 +1759,9 @@ class PathEditorModal {
 
     show() {
         // Add CSS animations if not already added
-        if (!document.getElementById('fl-path-animator-styles')) {
+        if (!document.getElementById('wanmove-path-animator-styles')) {
             const style = document.createElement('style');
-            style.id = 'fl-path-animator-styles';
+            style.id = 'wanmove-path-animator-styles';
             style.textContent = `
                 @keyframes fadeIn {
                     from { opacity: 0; }
@@ -1788,7 +1788,7 @@ class PathEditorModal {
         // Focus the container so it can receive paste events
         setTimeout(() => {
             this.container.focus();
-            console.log('FL_PathAnimator: Container focused');
+            console.log('WanMove_PathAnimator: Container focused');
         }, 100);
     }
 
@@ -1806,7 +1806,7 @@ class PathEditorModal {
         }
         document.removeEventListener('paste', this.pasteHandler);
 
-        console.log('FL_PathAnimator: All event listeners removed');
+        console.log('WanMove_PathAnimator: All event listeners removed');
 
         // Fade out animation
         this.overlay.style.animation = 'fadeIn 0.15s ease-in reverse';
