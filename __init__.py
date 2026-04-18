@@ -3,7 +3,7 @@ WanMove Path Animator
 Creates animated points that follow user-drawn paths with visual editor.
 """
 
-from .nodes.WanMove_PathAnimator import WanMove_PathAnimator
+from .nodes import WanMove_PathAnimator
 
 NODE_CLASS_MAPPINGS = {
     "WanMove_PathAnimator": WanMove_PathAnimator,

@@ -48,11 +48,10 @@ class WanMove_PathAnimator:
     RETURN_TYPES = ("IMAGE", "MASK", "STRING",)
     RETURN_NAMES = ("image", "mask", "coordinates",)
     FUNCTION = "animate_paths"
-    CATEGORY = "🎨 WanMove Path Animator"
+    CATEGORY = "WanMove Path Animator"
     DESCRIPTION = """
-Creates animated shapes that follow user-drawn paths.
-Open the path editor to draw trajectories on a reference image, then shapes will follow these paths over time.
-Outputs WAN ATI-compatible coordinate strings with proper 121-point resampling for stable video generation.
+Creates animated points that follow user-drawn paths.
+Open the path editor to draw trajectories on a reference image, then points will follow these paths over time.
 """
 
     @classmethod
@@ -158,11 +157,10 @@ Outputs WAN ATI-compatible coordinate strings with proper 121-point resampling f
     def resample_path_uniform(self, points, num_samples=121):
         """
         Resample path to exactly num_samples points with even arc-length spacing.
-        This matches KJNodes "path" sampling method and is CRITICAL for WAN ATI stability.
 
         Args:
             points: List of {x, y} dicts representing the path
-            num_samples: Number of points to resample to (default 121 for WAN ATI)
+            num_samples: Number of points to resample to (frame_count)
 
         Returns:
             List of {x, y} dicts with exactly num_samples points evenly distributed along the arc
@@ -224,7 +222,7 @@ Outputs WAN ATI-compatible coordinate strings with proper 121-point resampling f
         Returns (x, y) coordinates
 
         NOTE: This is used for visualization/animation only.
-        For WAN ATI output, use resample_path_uniform() instead.
+        For output, use resample_path_uniform() instead.
         """
         if len(points) == 0:
             return (0, 0)
@@ -393,8 +391,7 @@ Outputs WAN ATI-compatible coordinate strings with proper 121-point resampling f
         out_images = torch.cat(images_list, dim=0)
         out_masks = torch.cat(masks_list, dim=0)
 
-        # SOLUTION 2 & 3: Generate WAN ATI-compatible coordinate string
-        # Resample each path to exactly 121 points with visibility flags
+        # Resample each path to the frame count with visibility flags
         coord_tracks = []
         for path in scaled_paths:
             points = path.get('points', [])
@@ -402,12 +399,12 @@ Outputs WAN ATI-compatible coordinate strings with proper 121-point resampling f
             # Check if this is a single-point path (static anchor)
             is_single_point = path.get('isSinglePoint', False) or len(points) == 1
 
-            # Resample to exactly 121 points for WAN ATI compatibility
-            resampled_points = self.resample_path_uniform(points, num_samples=121)
+            # Resample to frame count
+            resampled_points = self.resample_path_uniform(points, num_samples=frame_count)
 
-            # Add visibility flag (1.0 = visible, required by WAN ATI)
+            # Add visibility flag (1.0 = visible)
             # Format: [{"x": x, "y": y}, {"x": x, "y": y}, ...]
-            # The visibility will be added as a third coordinate when processed by ATI
+            # The visibility will be added as a third coordinate when processed (?)
             track_coords = [
                 {"x": int(round(p["x"])), "y": int(round(p["y"]))}
                 for p in resampled_points
@@ -415,9 +412,9 @@ Outputs WAN ATI-compatible coordinate strings with proper 121-point resampling f
 
             coord_tracks.append(track_coords)
 
-        # Output as list of tracks (each track is a list of 121 {x, y} points)
+        # Output as list of tracks (each track is a list of frame_count number of {x, y} points)
         coord_string = json.dumps(coord_tracks)
 
-        print(f"WanMove_PathAnimator: Generated {len(coord_tracks)} tracks with 121 points each for WAN ATI")
+        print(f"WanMove_PathAnimator: Generated {len(coord_tracks)} tracks with {frame_count} points each for Wan-Move")
 
         return (out_images, out_masks, coord_string)

@@ -70,7 +70,7 @@ app.registerExtension({
 
             // Add path count display (readonly)
             const pathCountWidget = node.addWidget("text", "Path Count", "0 paths", null);
-            pathCountWidget.disabled = true;
+            pathCountWidget.disabled = false;
 
             // Update path count when paths change
             function updatePathCount() {
