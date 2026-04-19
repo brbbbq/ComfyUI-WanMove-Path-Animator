@@ -1187,21 +1187,33 @@ class PathEditorModal {
             inputs.endY.value = path.bezier_pts[5].toFixed(2);
         };
 
-        const handleInputKeyBlur = () => {
-            path.bezier_pts[0] = parseFloat(inputs.startY.value) || 0;
-            path.bezier_pts[1] = Math.max(0, Math.min(1, parseFloat(inputs.h1X.value) || 0)); // clamp X
-            path.bezier_pts[2] = parseFloat(inputs.h1Y.value) || 0;
-            path.bezier_pts[3] = Math.max(0, Math.min(1, parseFloat(inputs.h2X.value) || 0)); // clamp X
-            path.bezier_pts[4] = parseFloat(inputs.h2Y.value) || 0;
-            path.bezier_pts[5] = parseFloat(inputs.endY.value) || 0;
-            updateInputsDOM(); // Format display back
+        const updateFromInputs = () => {
+            // Helper to safely parse while typing (avoids breaking if the field is temporarily empty or just a minus sign)
+            const parseVal = (val, fallback) => {
+                const parsed = parseFloat(val);
+                return isNaN(parsed) ? fallback : parsed;
+            };
+            
+            path.bezier_pts[0] = parseVal(inputs.startY.value, path.bezier_pts[0]);
+            path.bezier_pts[1] = Math.max(0, Math.min(1, parseVal(inputs.h1X.value, path.bezier_pts[1])));
+            path.bezier_pts[2] = parseVal(inputs.h1Y.value, path.bezier_pts[2]);
+            path.bezier_pts[3] = Math.max(0, Math.min(1, parseVal(inputs.h2X.value, path.bezier_pts[3])));
+            path.bezier_pts[4] = parseVal(inputs.h2Y.value, path.bezier_pts[4]);
+            path.bezier_pts[5] = parseVal(inputs.endY.value, path.bezier_pts[5]);
+            
             draw();
             this.savePaths();
         };
 
+        const handleInputKeyBlur = () => {
+            updateFromInputs();
+            updateInputsDOM(); // Format display back (adds the .toFixed(2) styling)
+        };
+
         // Attach listeners to manual input fields
         Object.values(inputs).forEach(inp => {
-            inp.addEventListener('blur', handleInputKeyBlur);
+            inp.addEventListener('input', updateFromInputs); // Real-time curve updates
+            inp.addEventListener('blur', handleInputKeyBlur); // Format field text on exit
             inp.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') inp.blur();
             });
