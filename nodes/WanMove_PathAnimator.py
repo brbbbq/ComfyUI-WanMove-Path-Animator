@@ -41,9 +41,9 @@ Includes custom Bezier easing support.
                 t_max = t
         return (t_min + t_max) / 2.0
 
-    def get_bezier_y(self, t, y1, y2):
-        """Calculate Y (Progress) given the parametric 't'."""
-        return 3 * (1 - t)**2 * t * y1 + 3 * (1 - t) * t**2 * y2 + t**3
+    def get_bezier_y(self, t, y0, y1, y2, y3):
+        """Calculate Y (Progress) given the parametric 't' and variable start/end Y values."""
+        return (1 - t)**3 * y0 + 3 * (1 - t)**2 * t * y1 + 3 * (1 - t) * t**2 * y2 + t**3 * y3
 
     def resample_path_uniform(self, points, num_samples=121, bezier_points=None):
         """
@@ -52,11 +52,19 @@ Includes custom Bezier easing support.
         if len(points) == 0:
             return[]
 
-        # Default to linear mapping if no valid bezier is provided
-        if bezier_points is None or len(bezier_points) != 4:
-            bezier_points =[0.0, 0.0, 1.0, 1.0]
-            
-        x1, y1, x2, y2 = bezier_points
+        # Handle backward compatibility and defaults
+        if bezier_points is None:
+            bezier_points =[0.0, 0.0, 0.0, 1.0, 1.0, 1.0]
+
+        if len(bezier_points) == 4:
+            # Old format [x1, y1, x2, y2]
+            x1, y1, x2, y2 = bezier_points
+            y0, y3 = 0.0, 1.0
+        elif len(bezier_points) == 6:
+            # New format [y0, x1, y1, x2, y2, y3]
+            y0, x1, y1, x2, y2, y3 = bezier_points
+        else:
+            y0, x1, y1, x2, y2, y3 = 0.0, 0.0, 0.0, 1.0, 1.0, 1.0
 
         if len(points) == 1:
             return[{'x': points[0]['x'], 'y': points[0]['y']} for _ in range(num_samples)]
@@ -71,7 +79,7 @@ Includes custom Bezier easing support.
         total_length = cumulative_lengths[-1]
 
         if total_length == 0:
-            return [{'x': points[0]['x'], 'y': points[0]['y']} for _ in range(num_samples)]
+            return[{'x': points[0]['x'], 'y': points[0]['y']} for _ in range(num_samples)]
 
         resampled =[]
         for i in range(num_samples):
@@ -80,7 +88,7 @@ Includes custom Bezier easing support.
             
             # 2. Map linear time to eased progress using the Bezier curve
             t_param = self.solve_bezier_x(linear_time, x1, x2)
-            eased_progress = self.get_bezier_y(t_param, y1, y2)
+            eased_progress = self.get_bezier_y(t_param, y0, y1, y2, y3)
             
             # 3. Apply the eased progress to the path's total length
             target_length = eased_progress * total_length
@@ -147,14 +155,14 @@ Includes custom Bezier easing support.
         coord_tracks =[]
         for path in scaled_paths:
             points = path.get('points',[])
-            bezier_pts = path.get('bezier_pts',[0.0, 0.0, 1.0, 1.0])
+            bezier_pts = path.get('bezier_pts',[0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
 
             is_single_point = path.get('isSinglePoint', False) or len(points) == 1
 
             # Resample to frame count with the bezier points applied
             resampled_points = self.resample_path_uniform(points, num_samples=frame_count, bezier_points=bezier_pts)
 
-            track_coords = [
+            track_coords =[
                 {"x": int(round(p["x"])), "y": int(round(p["y"]))}
                 for p in resampled_points
             ]

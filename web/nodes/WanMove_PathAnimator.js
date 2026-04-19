@@ -539,7 +539,7 @@ class PathEditorModal {
                 isSinglePoint: true,
                 startTime: 0.0,
                 endTime: 1.0,
-                bezier_pts: [0.0, 0.0, 1.0, 1.0], // Default Linear
+                bezier_pts:[0.0, 0.0, 0.0, 1.0, 1.0, 1.0], // Default Linear (6 parameters now)
                 visibilityMode: 'pop'
             };
             this.paths.push(path);
@@ -598,7 +598,7 @@ class PathEditorModal {
                 isSinglePoint: false,
                 startTime: 0.0,
                 endTime: 1.0,
-                bezier_pts:[0.0, 0.0, 1.0, 1.0], // Default linear
+                bezier_pts:[0.0, 0.0, 0.0, 1.0, 1.0, 1.0], // Default linear
                 visibilityMode: 'pop'
             };
         } else if (this.tool === 'point') {
@@ -610,7 +610,7 @@ class PathEditorModal {
                 isSinglePoint: true,
                 startTime: 0.0,
                 endTime: 1.0,
-                bezier_pts:[0.0, 0.0, 1.0, 1.0], // Default linear
+                bezier_pts:[0.0, 0.0, 0.0, 1.0, 1.0, 1.0], // Default linear
                 visibilityMode: 'pop'
             };
             this.paths.push(path);
@@ -992,20 +992,83 @@ class PathEditorModal {
         const bezierSection = document.createElement('div');
         bezierSection.style.cssText = 'display: flex; flex-direction: column; gap: 6px;';
         
+        // Header with title and Reset button
+        const bezierHeader = document.createElement('div');
+        bezierHeader.style.cssText = 'display: flex; justify-content: space-between; align-items: center;';
+        
         const bezierLabel = document.createElement('label');
         bezierLabel.textContent = 'Custom Easing Curve';
         bezierLabel.style.cssText = 'color: #fff; font-size: 11px; font-weight: 500; opacity: 0.9;';
         
+        const resetBtn = document.createElement('button');
+        resetBtn.textContent = 'Reset';
+        resetBtn.style.cssText = 'background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 3px; color: #fff; font-size: 9px; padding: 2px 6px; cursor: pointer; transition: background 0.2s;';
+        resetBtn.onmouseover = () => resetBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+        resetBtn.onmouseout = () => resetBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+        resetBtn.onclick = (e) => {
+            e.stopPropagation();
+            path.bezier_pts =[0.0, 0.0, 0.0, 1.0, 1.0, 1.0];
+            this.savePaths();
+            this.updateSidebar();
+        };
+
+        bezierHeader.appendChild(bezierLabel);
+        bezierHeader.appendChild(resetBtn);
+
+        // Ensure 6-element compatibility
+        if (!path.bezier_pts || path.bezier_pts.length < 6) {
+            const old = path.bezier_pts ||[0.0, 0.0, 1.0, 1.0];
+            path.bezier_pts = [0.0, old[0], old[1], old[2], old[3], 1.0]; 
+        }
+        
         const bezierCanvas = document.createElement('canvas');
         bezierCanvas.width = 210;
-        bezierCanvas.height = 120;
-        bezierCanvas.style.cssText = 'background: #2a2a2a; border: 1px solid #444; border-radius: 4px; cursor: pointer; width: 100%;';
+        bezierCanvas.height = 140;
+        bezierCanvas.style.cssText = 'background: #2a2a2a; border: 1px solid #444; border-radius: 4px; cursor: crosshair; width: 100%;';
         
-        bezierSection.appendChild(bezierLabel);
-        bezierSection.appendChild(bezierCanvas);
+        // Create manual input fields Grid
+        const fieldsContainer = document.createElement('div');
+        fieldsContainer.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 10px; color: #ccc; margin-top: 2px;';
+        
+        const createField = (label) => {
+            const wrap = document.createElement('div');
+            wrap.style.cssText = 'display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); padding: 3px 6px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.05);';
+            const lbl = document.createElement('span');
+            lbl.textContent = label;
+            const inp = document.createElement('input');
+            inp.type = 'number'; inp.step = '0.05';
+            inp.style.cssText = 'width: 40px; background: #1a1a1a; border: 1px solid #444; color: #4ECDC4; text-align: center; font-size: 10px; border-radius: 2px; padding: 2px;';
+            wrap.appendChild(lbl); wrap.appendChild(inp);
+            return { wrap, inp };
+        };
 
-        if (!path.bezier_pts) path.bezier_pts =[0.0, 0.0, 1.0, 1.0]; 
-        this.setupBezierEditor(bezierCanvas, path);
+        const fStartY = createField('Start Y');
+        const fEndY = createField('End Y');
+        const fH1X = createField('Start H.X');
+        const fH1Y = createField('Start H.Y');
+        const fH2X = createField('End H.X');
+        const fH2Y = createField('End H.Y');
+
+        // Row 1
+        fieldsContainer.appendChild(fStartY.wrap);
+        fieldsContainer.appendChild(fEndY.wrap);
+        // Row 2
+        fieldsContainer.appendChild(fH1X.wrap);
+        fieldsContainer.appendChild(fH2X.wrap);
+        // Row 3
+        fieldsContainer.appendChild(fH1Y.wrap);
+        fieldsContainer.appendChild(fH2Y.wrap);
+
+        bezierSection.appendChild(bezierHeader);
+        bezierSection.appendChild(bezierCanvas);
+        bezierSection.appendChild(fieldsContainer);
+
+        const inputRefs = {
+            startY: fStartY.inp, h1X: fH1X.inp, h1Y: fH1Y.inp, 
+            h2X: fH2X.inp, h2Y: fH2Y.inp, endY: fEndY.inp
+        };
+
+        this.setupBezierEditor(bezierCanvas, path, inputRefs);
 
         const visibilitySection = document.createElement('div');
         visibilitySection.style.cssText = 'display: flex; flex-direction: column; gap: 6px;';
@@ -1107,7 +1170,7 @@ class PathEditorModal {
         document.addEventListener('mouseup', onMouseUp);
     }
 
-    setupBezierEditor(canvas, path) {
+    setupBezierEditor(canvas, path, inputs) {
         const ctx = canvas.getContext('2d');
         const padding = 15;
         const width = canvas.width - padding * 2;
@@ -1115,17 +1178,48 @@ class PathEditorModal {
         
         let draggingPoint = null;
 
+        const updateInputsDOM = () => {
+            inputs.startY.value = path.bezier_pts[0].toFixed(2);
+            inputs.h1X.value = path.bezier_pts[1].toFixed(2);
+            inputs.h1Y.value = path.bezier_pts[2].toFixed(2);
+            inputs.h2X.value = path.bezier_pts[3].toFixed(2);
+            inputs.h2Y.value = path.bezier_pts[4].toFixed(2);
+            inputs.endY.value = path.bezier_pts[5].toFixed(2);
+        };
+
+        const handleInputKeyBlur = () => {
+            path.bezier_pts[0] = parseFloat(inputs.startY.value) || 0;
+            path.bezier_pts[1] = Math.max(0, Math.min(1, parseFloat(inputs.h1X.value) || 0)); // clamp X
+            path.bezier_pts[2] = parseFloat(inputs.h1Y.value) || 0;
+            path.bezier_pts[3] = Math.max(0, Math.min(1, parseFloat(inputs.h2X.value) || 0)); // clamp X
+            path.bezier_pts[4] = parseFloat(inputs.h2Y.value) || 0;
+            path.bezier_pts[5] = parseFloat(inputs.endY.value) || 0;
+            updateInputsDOM(); // Format display back
+            draw();
+            this.savePaths();
+        };
+
+        // Attach listeners to manual input fields
+        Object.values(inputs).forEach(inp => {
+            inp.addEventListener('blur', handleInputKeyBlur);
+            inp.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') inp.blur();
+            });
+        });
+
         const draw = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            const p1x = padding + path.bezier_pts[0] * width;
-            const p1y = canvas.height - padding - path.bezier_pts[1] * height;
-            const p2x = padding + path.bezier_pts[2] * width;
-            const p2y = canvas.height - padding - path.bezier_pts[3] * height;
+            // Map coordinates mathematically
+            const p0y = canvas.height - padding - path.bezier_pts[0] * height;
+            const p1x = padding + path.bezier_pts[1] * width;
+            const p1y = canvas.height - padding - path.bezier_pts[2] * height;
+            const p2x = padding + path.bezier_pts[3] * width;
+            const p2y = canvas.height - padding - path.bezier_pts[4] * height;
+            const p3y = canvas.height - padding - path.bezier_pts[5] * height;
+
             const startX = padding;
-            const startY = canvas.height - padding;
             const endX = canvas.width - padding;
-            const endY = padding;
 
             // Draw Background Graph
             ctx.fillStyle = '#1e1e1e';
@@ -1134,40 +1228,45 @@ class PathEditorModal {
             ctx.lineWidth = 1;
             ctx.strokeRect(padding, padding, width, height);
             
-            // Draw baseline / peak line if overshoot exists
+            // Draw baseline / peak line representing Progress 0 and 1
+            const baseY = canvas.height - padding;
+            const peakY = padding;
             ctx.strokeStyle = '#333';
             ctx.beginPath();
-            ctx.moveTo(0, startY); ctx.lineTo(canvas.width, startY);
-            ctx.moveTo(0, endY); ctx.lineTo(canvas.width, endY);
+            ctx.moveTo(0, baseY); ctx.lineTo(canvas.width, baseY);
+            ctx.moveTo(0, peakY); ctx.lineTo(canvas.width, peakY);
             ctx.stroke();
             
             // Draw handle lines
             ctx.beginPath();
-            ctx.moveTo(startX, startY); ctx.lineTo(p1x, p1y);
-            ctx.moveTo(endX, endY); ctx.lineTo(p2x, p2y);
+            ctx.moveTo(startX, p0y); ctx.lineTo(p1x, p1y);
+            ctx.moveTo(endX, p3y); ctx.lineTo(p2x, p2y);
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
             ctx.stroke();
 
             // Draw actual Bezier Curve
             ctx.beginPath();
-            ctx.moveTo(startX, startY);
-            ctx.bezierCurveTo(p1x, p1y, p2x, p2y, endX, endY);
+            ctx.moveTo(startX, p0y);
+            ctx.bezierCurveTo(p1x, p1y, p2x, p2y, endX, p3y);
             ctx.strokeStyle = '#4ECDC4'; 
             ctx.lineWidth = 2;
             ctx.stroke();
 
             // Draw Control Handles
-            const drawHandle = (x, y, isHovered) => {
+            const drawHandle = (x, y, isHovered, isEndNode=false) => {
                 ctx.beginPath(); 
-                ctx.arc(x, y, 4, 0, Math.PI * 2);
-                ctx.fillStyle = isHovered ? '#fff' : '#4ECDC4';
+                ctx.arc(x, y, isEndNode ? 5 : 4, 0, Math.PI * 2);
+                ctx.fillStyle = isHovered ? '#fff' : (isEndNode ? '#F7DC6F' : '#4ECDC4');
                 ctx.fill();
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = 1;
                 ctx.stroke();
             };
+            
+            drawHandle(startX, p0y, draggingPoint === 0, true);
             drawHandle(p1x, p1y, draggingPoint === 1);
             drawHandle(p2x, p2y, draggingPoint === 2);
+            drawHandle(endX, p3y, draggingPoint === 3, true);
         };
 
         const getMousePos = (e) => {
@@ -1183,21 +1282,27 @@ class PathEditorModal {
         };
 
         const onMouseMove = (e) => {
-            if (!draggingPoint) return;
+            if (draggingPoint === null) return;
             const pos = getMousePos(e);
-            if (draggingPoint === 1) {
-                path.bezier_pts[0] = pos.x;
-                path.bezier_pts[1] = pos.y;
-            } else {
-                path.bezier_pts[2] = pos.x;
-                path.bezier_pts[3] = pos.y;
+
+            if (draggingPoint === 0) {
+                path.bezier_pts[0] = pos.y; // X remains fixed at Start
+            } else if (draggingPoint === 1) {
+                path.bezier_pts[1] = pos.x;
+                path.bezier_pts[2] = pos.y;
+            } else if (draggingPoint === 2) {
+                path.bezier_pts[3] = pos.x;
+                path.bezier_pts[4] = pos.y;
+            } else if (draggingPoint === 3) {
+                path.bezier_pts[5] = pos.y; // X remains fixed at End
             }
             draw();
         };
 
         const onMouseUp = () => {
-            if(draggingPoint) {
+            if(draggingPoint !== null) {
                 draggingPoint = null;
+                updateInputsDOM(); // Write visual changes back to the text fields
                 this.savePaths();
                 document.removeEventListener('mousemove', onMouseMove);
                 document.removeEventListener('mouseup', onMouseUp);
@@ -1207,25 +1312,36 @@ class PathEditorModal {
 
         canvas.addEventListener('mousedown', (e) => {
             const pos = getMousePos(e);
-            const p1x = padding + path.bezier_pts[0] * width;
-            const p1y = canvas.height - padding - path.bezier_pts[1] * height;
-            const p2x = padding + path.bezier_pts[2] * width;
-            const p2y = canvas.height - padding - path.bezier_pts[3] * height;
+            
+            const p0y = canvas.height - padding - path.bezier_pts[0] * height;
+            const p1x = padding + path.bezier_pts[1] * width;
+            const p1y = canvas.height - padding - path.bezier_pts[2] * height;
+            const p2x = padding + path.bezier_pts[3] * width;
+            const p2y = canvas.height - padding - path.bezier_pts[4] * height;
+            const p3y = canvas.height - padding - path.bezier_pts[5] * height;
+            const startX = padding;
+            const endX = canvas.width - padding;
 
-            // 15px hit radius for handles
+            // Hit radius for handles (Priority given to Handles over Start/End nodes if overlapped)
             if (Math.hypot(pos.px - p1x, pos.py - p1y) < 15) {
                 draggingPoint = 1;
             } else if (Math.hypot(pos.px - p2x, pos.py - p2y) < 15) {
                 draggingPoint = 2;
+            } else if (Math.hypot(pos.px - startX, pos.py - p0y) < 15) {
+                draggingPoint = 0;
+            } else if (Math.hypot(pos.px - endX, pos.py - p3y) < 15) {
+                draggingPoint = 3;
             }
 
-            if (draggingPoint) {
+            if (draggingPoint !== null) {
                 document.addEventListener('mousemove', onMouseMove);
                 document.addEventListener('mouseup', onMouseUp);
                 draw();
             }
         });
 
+        // Init
+        updateInputsDOM();
         draw(); 
     }
 
