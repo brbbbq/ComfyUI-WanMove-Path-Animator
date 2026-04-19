@@ -117,7 +117,7 @@ class PathEditorModal {
         this.currentPath = null;
         this.selectedPathIndex = -1;
         this.isDrawing = false;
-        this.tool = 'pencil'; // pencil, eraser, select, point
+        this.tool = 'pencil'; // pencil, select, point
         this.currentColor = this.getRandomColor();
         this.backgroundImage = null;
         this.canvasScale = 1.0;
@@ -691,7 +691,6 @@ class PathEditorModal {
         const tools = [
             { name: 'pencil', icon: Icons.pencil(), title: 'Draw Path (Motion)' },
             { name: 'point', icon: Icons.pin(), title: 'Add Static Point (Anchor)' },
-            { name: 'eraser', icon: Icons.trash(), title: 'Erase Path' },
             { name: 'select', icon: Icons.cursor(), title: 'Select Path' },
         ];
 
@@ -706,8 +705,6 @@ class PathEditorModal {
                     this.canvas.style.cursor = 'crosshair';
                 } else if (this.tool === 'pencil') {
                     this.canvas.style.cursor = 'crosshair';
-                } else if (this.tool === 'eraser') {
-                    this.canvas.style.cursor = 'not-allowed';
                 } else if (this.tool === 'select') {
                     this.canvas.style.cursor = 'pointer';
                 }
@@ -942,15 +939,6 @@ class PathEditorModal {
             // selectedPathIndex will be -1 if clicking empty space, which deselects
             this.updateSidebar();
             this.render();
-        } else if (this.tool === 'eraser') {
-            // Erase path at this point
-            const pathIndex = this.findPathAtPoint(pos);
-            if (pathIndex !== -1) {
-                this.paths.splice(pathIndex, 1);
-                this.selectedPathIndex = -1;
-                this.updateSidebar();
-                this.render();
-            }
         }
     }
 
