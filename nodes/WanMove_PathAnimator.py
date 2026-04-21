@@ -22,6 +22,7 @@ Includes custom Bezier easing support.
                 "frame_count": ("INT", {"default": 30, "min": 1, "max": 500, "step": 1}),
             },
             "optional": {
+                "image": ("IMAGE",),
                 "paths_data": ("STRING", {"default": '{"paths":[], "canvas_size": {"width": 512, "height": 512}}', "multiline": True}),
             }
         }
@@ -57,11 +58,11 @@ Includes custom Bezier easing support.
             bezier_points =[0.0, 0.0, 0.0, 1.0, 1.0, 1.0]
 
         if len(bezier_points) == 4:
-            # Old format [x1, y1, x2, y2]
+            # Old format[x1, y1, x2, y2]
             x1, y1, x2, y2 = bezier_points
             y0, y3 = 0.0, 1.0
         elif len(bezier_points) == 6:
-            # New format [y0, x1, y1, x2, y2, y3]
+            # New format[y0, x1, y1, x2, y2, y3]
             y0, x1, y1, x2, y2, y3 = bezier_points
         else:
             y0, x1, y1, x2, y2, y3 = 0.0, 0.0, 0.0, 1.0, 1.0, 1.0
@@ -120,7 +121,11 @@ Includes custom Bezier easing support.
         return resampled
 
     def animate_paths(self, frame_width, frame_height, frame_count, 
-                     paths_data='{"paths":[], "canvas_size": {"width": 512, "height": 512}}'):
+                     paths_data='{"paths":[], "canvas_size": {"width": 512, "height": 512}}', image=None):
+
+        if image is not None:
+            # Override width and height if an input image is provided (shape is [Batch, Height, Width, Channels])
+            frame_height, frame_width = image.shape[1:3]
 
         try:
             paths_obj = json.loads(paths_data)

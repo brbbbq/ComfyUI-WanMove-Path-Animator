@@ -104,8 +104,8 @@ class PathEditorModal {
         this.animationFrame = null;
 
         this.loadPaths();
-        this.loadCachedBackgroundImage();
         this.createModal();
+        this.loadCachedBackgroundImage();
         this.setupKeyboardHandlers();
         this.startAnimation();
     }
@@ -168,8 +168,96 @@ class PathEditorModal {
         }
     }
 
+    getConnectedImageUrl() {
+        if (!this.node.inputs) return null;
+        const imgInput = this.node.inputs.find(i => i.name === "image");
+        if (!imgInput || imgInput.link === null) return null;
+        
+        const link = app.graph.links[imgInput.link];
+        if (!link) return null;
+        
+        let currentNode = app.graph.getNodeById(link.origin_id);
+        const visited = new Set();
+        
+        // Traverse the graph to find a node that has a preview or image widget
+        while (currentNode && !visited.has(currentNode.id)) {
+            visited.add(currentNode.id);
+            
+            // 1. Check if the current node itself generated a preview image (e.g., LoadImage or nodes with previews)
+            if (currentNode.imgs && currentNode.imgs.length > 0) {
+                return currentNode.imgs[0].src;
+            }
+            
+            // 2. Look forward: Check if this node outputs to a PreviewImage or SaveImage node
+            if (currentNode.outputs) {
+                for (const output of currentNode.outputs) {
+                    if (output.type === "IMAGE" && output.links) {
+                        for (const linkId of output.links) {
+                            const childLink = app.graph.links[linkId];
+                            if (childLink) {
+                                const childNode = app.graph.getNodeById(childLink.target_id);
+                                if (childNode && childNode.imgs && childNode.imgs.length > 0) {
+                                    return childNode.imgs[0].src;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 3. Check if the node has a static image widget (like LoadImage)
+            const imgWidget = currentNode.widgets?.find(w => w.name === "image");
+            if (imgWidget && imgWidget.value) {
+                let filename = imgWidget.value;
+                let subfolder = "";
+                let type = "input";
+                
+                if (typeof imgWidget.value === "object") {
+                    filename = imgWidget.value.filename || filename;
+                    subfolder = imgWidget.value.subfolder || subfolder;
+                    type = imgWidget.value.type || type;
+                }
+                
+                if (filename && typeof filename === "string") {
+                    const searchParams = new URLSearchParams();
+                    searchParams.append("filename", filename);
+                    if (subfolder) searchParams.append("subfolder", subfolder);
+                    if (type) searchParams.append("type", type);
+                    return api.apiURL(`/view?${searchParams.toString()}`);
+                }
+            }
+            
+            // 4. Move upstream: backtrack to find the first incoming IMAGE link
+            let upstreamNode = null;
+            if (currentNode.inputs) {
+                for (const input of currentNode.inputs) {
+                    if (input.type === "IMAGE" && input.link) {
+                        const parentLink = app.graph.links[input.link];
+                        if (parentLink) {
+                            upstreamNode = app.graph.getNodeById(parentLink.origin_id);
+                            break; // Follow the first image branch backwards
+                        }
+                    }
+                }
+            }
+            
+            currentNode = upstreamNode;
+        }
+        
+        return null;
+    }
+
     loadCachedBackgroundImage() {
-        if (this.pathsDataWidget._cachedBackgroundImage) {
+        let srcToLoad = null;
+        const connectedUrl = this.getConnectedImageUrl();
+        
+        if (connectedUrl) {
+            srcToLoad = connectedUrl;
+        } else if (this.pathsDataWidget._cachedBackgroundImage) {
+            srcToLoad = this.pathsDataWidget._cachedBackgroundImage;
+        }
+
+        if (srcToLoad) {
             const img = new Image();
             img.onload = () => {
                 this.backgroundImage = img;
@@ -179,7 +267,7 @@ class PathEditorModal {
                     this.render();
                 }
             };
-            img.src = this.pathsDataWidget._cachedBackgroundImage;
+            img.src = srcToLoad;
         }
     }
 
