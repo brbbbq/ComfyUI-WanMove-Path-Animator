@@ -1058,23 +1058,88 @@ class PathEditorModal {
 
         rangeTrack.appendChild(activeRange);
 
-        const startHandle = this.createRangeHandle('Start', startPercent, true);
-        const endHandle = this.createRangeHandle('End', endPercent, false);
-
-        this.setupRangeHandleDrag(startHandle, endHandle, activeRange, path, pathIndex, true);
-        this.setupRangeHandleDrag(endHandle, startHandle, activeRange, path, pathIndex, false);
+        const startHandle = this.createRangeHandle(startPercent, true);
+        const endHandle = this.createRangeHandle(endPercent, false);
 
         timelineSliderContainer.appendChild(rangeTrack);
         timelineSliderContainer.appendChild(startHandle);
         timelineSliderContainer.appendChild(endHandle);
 
-        const valuesDisplay = document.createElement('div');
-        valuesDisplay.style.cssText = 'display: flex; justify-content: space-between; font-size: 10px; color: #888; margin-top: 4px;';
-        valuesDisplay.innerHTML = `<span>Start: ${Math.round(startPercent)}%</span><span>End: ${Math.round(endPercent)}%</span>`;
+        // --- Custom Inputs for Timeline Range ---
+        const inputsContainer = document.createElement('div');
+        inputsContainer.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 10px; color: #ccc; margin-top: 2px;';
+
+        const createField = (label, value) => {
+            const wrap = document.createElement('div');
+            wrap.style.cssText = 'display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); padding: 3px 6px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.05);';
+            const lbl = document.createElement('span');
+            lbl.textContent = label;
+            const inp = document.createElement('input');
+            inp.type = 'number'; inp.step = '1'; inp.min = '0'; inp.max = '100';
+            inp.value = Math.round(value);
+            inp.style.cssText = 'width: 40px; background: #1a1a1a; border: 1px solid #444; color: #4ECDC4; text-align: center; font-size: 10px; border-radius: 2px; padding: 2px;';
+            wrap.appendChild(lbl); wrap.appendChild(inp);
+            return { wrap, inp };
+        };
+
+        const startField = createField('Start %', startPercent);
+        const endField = createField('End %', endPercent);
+
+        inputsContainer.appendChild(startField.wrap);
+        inputsContainer.appendChild(endField.wrap);
+
+        const inputRefs = { start: startField.inp, end: endField.inp };
+
+        // Attach dragging interactions and bind them to the input fields
+        this.setupRangeHandleDrag(startHandle, endHandle, activeRange, path, pathIndex, true, inputRefs);
+        this.setupRangeHandleDrag(endHandle, startHandle, activeRange, path, pathIndex, false, inputRefs);
+
+        // Input value constraints & path updates
+        const updateFromInputs = () => {
+            let sVal = parseInt(inputRefs.start.value);
+            let eVal = parseInt(inputRefs.end.value);
+
+            if (isNaN(sVal)) sVal = 0;
+            if (isNaN(eVal)) eVal = 100;
+
+            // Constrain between 0 and 100
+            sVal = Math.max(0, Math.min(100, sVal));
+            eVal = Math.max(0, Math.min(100, eVal));
+
+            // Prevent overlap
+            if (sVal > eVal - 1) sVal = Math.max(0, eVal - 1);
+            if (eVal < sVal + 1) eVal = Math.min(100, sVal + 1);
+
+            inputRefs.start.value = sVal;
+            inputRefs.end.value = eVal;
+
+            // Update UI visuals
+            startHandle.style.left = `${sVal}%`;
+            endHandle.style.left = `${eVal}%`;
+            activeRange.style.left = `${sVal}%`;
+            activeRange.style.width = `${eVal - sVal}%`;
+
+            // Update actual Path data
+            path.startTime = sVal / 100;
+            path.endTime = eVal / 100;
+            this.savePaths();
+        };
+
+        const handleInputKeyBlur = (inp) => {
+            updateFromInputs();
+            inp.blur();
+        };
+
+        Object.values(inputRefs).forEach(inp => {
+            inp.addEventListener('change', updateFromInputs);
+            inp.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') handleInputKeyBlur(inp);
+            });
+        });
 
         timelineSection.appendChild(timelineLabel);
         timelineSection.appendChild(timelineSliderContainer);
-        timelineSection.appendChild(valuesDisplay);
+        timelineSection.appendChild(inputsContainer);
 
         // --- Custom Bezier UI Section ---
         const bezierSection = document.createElement('div');
@@ -1106,7 +1171,7 @@ class PathEditorModal {
         // Ensure 6-element compatibility
         if (!path.bezier_pts || path.bezier_pts.length < 6) {
             const old = path.bezier_pts ||[0.0, 0.0, 1.0, 1.0];
-            path.bezier_pts = [0.0, old[0], old[1], old[2], old[3], 1.0]; 
+            path.bezier_pts =[0.0, old[0], old[1], old[2], old[3], 1.0]; 
         }
         
         const bezierCanvas = document.createElement('canvas');
@@ -1118,7 +1183,7 @@ class PathEditorModal {
         const fieldsContainer = document.createElement('div');
         fieldsContainer.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 10px; color: #ccc; margin-top: 2px;';
         
-        const createField = (label) => {
+        const createBezierField = (label) => {
             const wrap = document.createElement('div');
             wrap.style.cssText = 'display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); padding: 3px 6px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.05);';
             const lbl = document.createElement('span');
@@ -1130,12 +1195,12 @@ class PathEditorModal {
             return { wrap, inp };
         };
 
-        const fStartY = createField('Start Y');
-        const fEndY = createField('End Y');
-        const fH1X = createField('Start H.X');
-        const fH1Y = createField('Start H.Y');
-        const fH2X = createField('End H.X');
-        const fH2Y = createField('End H.Y');
+        const fStartY = createBezierField('Start Y');
+        const fEndY = createBezierField('End Y');
+        const fH1X = createBezierField('Start H.X');
+        const fH1Y = createBezierField('Start H.Y');
+        const fH2X = createBezierField('End H.X');
+        const fH2Y = createBezierField('End H.Y');
 
         // Row 1
         fieldsContainer.appendChild(fStartY.wrap);
@@ -1151,12 +1216,12 @@ class PathEditorModal {
         bezierSection.appendChild(bezierCanvas);
         bezierSection.appendChild(fieldsContainer);
 
-        const inputRefs = {
+        const bezierRefs = {
             startY: fStartY.inp, h1X: fH1X.inp, h1Y: fH1Y.inp, 
             h2X: fH2X.inp, h2Y: fH2Y.inp, endY: fEndY.inp
         };
 
-        this.setupBezierEditor(bezierCanvas, path, inputRefs);
+        this.setupBezierEditor(bezierCanvas, path, bezierRefs);
 
         const visibilitySection = document.createElement('div');
         visibilitySection.style.cssText = 'display: flex; flex-direction: column; gap: 6px;';
@@ -1197,17 +1262,16 @@ class PathEditorModal {
         return container;
     }
 
-    createRangeHandle(label, position, isStart) {
+    createRangeHandle(position, isStart) {
         const handle = document.createElement('div');
         handle.style.cssText = `position: absolute; left: ${position}%; top: 50%; transform: translate(-50%, -50%); width: 16px; height: 16px; background: #4ECDC4; border: 2px solid #fff; border-radius: 50%; cursor: ${isStart ? 'e-resize' : 'w-resize'}; z-index: 10; transition: transform 0.1s ease;`;
 
         handle.onmouseover = () => { handle.style.transform = 'translate(-50%, -50%) scale(1.2)'; };
         handle.onmouseout = () => { handle.style.transform = 'translate(-50%, -50%) scale(1)'; };
-        handle.dataset.label = label;
         return handle;
     }
 
-    setupRangeHandleDrag(handle, otherHandle, activeRange, path, pathIndex, isStart) {
+    setupRangeHandleDrag(handle, otherHandle, activeRange, path, pathIndex, isStart, inputRefs) {
         let isDragging = false;
         let container = null;
 
@@ -1239,9 +1303,9 @@ class PathEditorModal {
             if (isStart) path.startTime = constrainedPercent / 100;
             else path.endTime = constrainedPercent / 100;
 
-            const valuesDisplay = container.parentElement.querySelector('div:last-child');
-            if (valuesDisplay) {
-                valuesDisplay.innerHTML = `<span>Start: ${Math.round(startPercent)}%</span><span>End: ${Math.round(endPercent)}%</span>`;
+            if (inputRefs) {
+                inputRefs.start.value = Math.round(startPercent);
+                inputRefs.end.value = Math.round(endPercent);
             }
         };
 

@@ -157,20 +157,48 @@ Includes custom Bezier easing support.
 
             scaled_paths.append(scaled_path)
 
-        coord_tracks =[]
+        coord_tracks = []
         for path in scaled_paths:
             points = path.get('points',[])
             bezier_pts = path.get('bezier_pts',[0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
+            start_time = path.get('startTime', 0.0)
+            end_time = path.get('endTime', 1.0)
 
             is_single_point = path.get('isSinglePoint', False) or len(points) == 1
 
-            # Resample to frame count with the bezier points applied
-            resampled_points = self.resample_path_uniform(points, num_samples=frame_count, bezier_points=bezier_pts)
+            # 1. Convert 0.0-1.0 time range into absolute frame indices
+            start_frame = max(0, min(frame_count - 1, int(round(start_time * (frame_count - 1)))))
+            end_frame = max(0, min(frame_count - 1, int(round(end_time * (frame_count - 1)))))
+            
+            # Failsafe: Ensure start doesn't surpass end
+            if start_frame > end_frame:
+                start_frame, end_frame = end_frame, start_frame
+                
+            active_frames = end_frame - start_frame + 1
 
-            track_coords =[
-                {"x": int(round(p["x"])), "y": int(round(p["y"]))}
-                for p in resampled_points
-            ]
+            # 2. Resample the path strictly to the active duration using the bezier easing
+            resampled_points = self.resample_path_uniform(points, num_samples=active_frames, bezier_points=bezier_pts)
+
+            if not resampled_points:
+                continue
+
+            track_coords =[]
+            
+            # Format the static start and end points
+            first_point = {"x": int(round(resampled_points[0]["x"])), "y": int(round(resampled_points[0]["y"]))}
+            last_point = {"x": int(round(resampled_points[-1]["x"])), "y": int(round(resampled_points[-1]["y"]))}
+
+            # 3. Pad the beginning frames (if start > 0%)
+            for _ in range(start_frame):
+                track_coords.append(first_point)
+                
+            # 4. Insert the active animated frames
+            for p in resampled_points:
+                track_coords.append({"x": int(round(p["x"])), "y": int(round(p["y"]))})
+                
+            # 5. Pad the remaining end frames (if end < 100%)
+            for _ in range(frame_count - end_frame - 1):
+                track_coords.append(last_point)
 
             coord_tracks.append(track_coords)
 
