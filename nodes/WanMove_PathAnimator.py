@@ -1,16 +1,17 @@
 import math
 import json
+import torch
 
 class WanMove_PathAnimator:
 
-    RETURN_TYPES = ("STRING",)
-    RETURN_NAMES = ("coordinates",)
+    RETURN_TYPES = ("TRACKS", "STRING")
+    RETURN_NAMES = ("tracks", "coordinates")
     FUNCTION = "animate_paths"
     CATEGORY = "WanMove Path Animator"
     DESCRIPTION = """
 Creates animated points that follow user-drawn paths.
 Open the path editor to draw trajectories on a reference image, then points will follow these paths over time.
-Includes custom Bezier easing support.
+Includes custom Bezier easing support and timeline visibility controls.
 """
 
     @classmethod
@@ -58,7 +59,7 @@ Includes custom Bezier easing support.
             bezier_points =[0.0, 0.0, 0.0, 1.0, 1.0, 1.0]
 
         if len(bezier_points) == 4:
-            # Old format[x1, y1, x2, y2]
+            # Old format [x1, y1, x2, y2]
             x1, y1, x2, y2 = bezier_points
             y0, y3 = 0.0, 1.0
         elif len(bezier_points) == 6:
@@ -68,7 +69,7 @@ Includes custom Bezier easing support.
             y0, x1, y1, x2, y2, y3 = 0.0, 0.0, 0.0, 1.0, 1.0, 1.0
 
         if len(points) == 1:
-            return[{'x': points[0]['x'], 'y': points[0]['y']} for _ in range(num_samples)]
+            return [{'x': points[0]['x'], 'y': points[0]['y']} for _ in range(num_samples)]
 
         cumulative_lengths = [0.0]
         for i in range(len(points) - 1):
@@ -80,11 +81,11 @@ Includes custom Bezier easing support.
         total_length = cumulative_lengths[-1]
 
         if total_length == 0:
-            return[{'x': points[0]['x'], 'y': points[0]['y']} for _ in range(num_samples)]
+            return [{'x': points[0]['x'], 'y': points[0]['y']} for _ in range(num_samples)]
 
         resampled =[]
         for i in range(num_samples):
-            # 1. Get linear time progress [0 to 1]
+            # 1. Get linear time progress[0 to 1]
             linear_time = 0 if num_samples == 1 else i / (num_samples - 1)
             
             # 2. Map linear time to eased progress using the Bezier curve
@@ -122,7 +123,7 @@ Includes custom Bezier easing support.
 
     def animate_paths(self, frame_width, frame_height, frame_count, 
                      paths_data='{"paths":[], "canvas_size": {"width": 512, "height": 512}}', image=None):
-
+        
         if image is not None:
             # Override width and height if an input image is provided (shape is [Batch, Height, Width, Channels])
             frame_height, frame_width = image.shape[1:3]
@@ -141,69 +142,83 @@ Includes custom Bezier easing support.
         scale_x = frame_width / canvas_width if canvas_width > 0 else 1.0
         scale_y = frame_height / canvas_height if canvas_height > 0 else 1.0
 
-        scaled_paths =[]
-        for path in paths:
-            scaled_path = path.copy()
-            scaled_points = []
-            for point in path.get('points',[]):
-                scaled_points.append({
-                    'x': point['x'] * scale_x,
-                    'y': point['y'] * scale_y
-                })
-            scaled_path['points'] = scaled_points
-
-            if 'isSinglePoint' in path:
-                scaled_path['isSinglePoint'] = path['isSinglePoint']
-
-            scaled_paths.append(scaled_path)
-
         coord_tracks = []
-        for path in scaled_paths:
+        visibility_tracks =[]
+        
+        for path in paths:
             points = path.get('points',[])
+            # Rescale points from canvas to actual frame size
+            scaled_points = [{'x': p['x'] * scale_x, 'y': p['y'] * scale_y} for p in points]
+            
             bezier_pts = path.get('bezier_pts',[0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
             start_time = path.get('startTime', 0.0)
             end_time = path.get('endTime', 1.0)
-
-            is_single_point = path.get('isSinglePoint', False) or len(points) == 1
+            visibility_mode = path.get('visibilityMode', 'pop')
 
             # 1. Convert 0.0-1.0 time range into absolute frame indices
             start_frame = max(0, min(frame_count - 1, int(round(start_time * (frame_count - 1)))))
             end_frame = max(0, min(frame_count - 1, int(round(end_time * (frame_count - 1)))))
             
-            # Failsafe: Ensure start doesn't surpass end
             if start_frame > end_frame:
                 start_frame, end_frame = end_frame, start_frame
                 
             active_frames = end_frame - start_frame + 1
 
-            # 2. Resample the path strictly to the active duration using the bezier easing
-            resampled_points = self.resample_path_uniform(points, num_samples=active_frames, bezier_points=bezier_pts)
+            # 2. Resample path to the active duration
+            resampled_points = self.resample_path_uniform(scaled_points, num_samples=active_frames, bezier_points=bezier_pts)
 
             if not resampled_points:
                 continue
 
             track_coords =[]
+            track_mask = []
             
-            # Format the static start and end points
             first_point = {"x": int(round(resampled_points[0]["x"])), "y": int(round(resampled_points[0]["y"]))}
             last_point = {"x": int(round(resampled_points[-1]["x"])), "y": int(round(resampled_points[-1]["y"]))}
 
-            # 3. Pad the beginning frames (if start > 0%)
+            # 3. Padding Start
             for _ in range(start_frame):
                 track_coords.append(first_point)
+                track_mask.append(1.0 if visibility_mode == 'static' else 0.0)
                 
-            # 4. Insert the active animated frames
+            # 4. Animated Frames
             for p in resampled_points:
                 track_coords.append({"x": int(round(p["x"])), "y": int(round(p["y"]))})
+                track_mask.append(1.0)
                 
-            # 5. Pad the remaining end frames (if end < 100%)
+            # 5. Padding End
             for _ in range(frame_count - end_frame - 1):
                 track_coords.append(last_point)
+                track_mask.append(1.0 if visibility_mode == 'static' else 0.0)
 
             coord_tracks.append(track_coords)
+            visibility_tracks.append(track_mask)
 
+        # 6. Generate JSON string (Matches existing legacy functionality)
         coord_string = json.dumps(coord_tracks)
+        
+        # 7. Generate TRACKS Dictionary (Compatible with WanMove nodes)
+        if not coord_tracks:
+            tracks_tensor = torch.zeros((frame_count, 0, 2), dtype=torch.float32)
+            track_visibility = torch.zeros((frame_count, 0), dtype=torch.bool)
+        else:
+            # Create list of frames, each containing a list of [x, y] for all tracks
+            formatted_list =[]
+            for f in range(frame_count):
+                frame_data = [[track[f]['x'], track[f]['y']] for track in coord_tracks]
+                formatted_list.append(frame_data)
+            
+            tracks_tensor = torch.tensor(formatted_list, dtype=torch.float32)
+            
+            # Transpose visibility_tracks from [num_tracks, frames] ->[frames, num_tracks]
+            mask_tensor = torch.tensor(visibility_tracks, dtype=torch.float32).transpose(0, 1)
+            track_visibility = (mask_tensor > 0.5)
 
-        print(f"WanMove_PathAnimator: Generated {len(coord_tracks)} tracks with {frame_count} points each for Wan-Move")
+        tracks_output = {
+            "track_path": tracks_tensor,
+            "track_visibility": track_visibility
+        }
 
-        return (coord_string,)
+        print(f"WanMove_PathAnimator: Generated {len(coord_tracks)} tracks for Wan-Move")
+
+        return (tracks_output, coord_string)
