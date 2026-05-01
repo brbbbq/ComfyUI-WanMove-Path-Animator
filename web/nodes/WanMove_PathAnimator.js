@@ -70,12 +70,111 @@ app.registerExtension({
     }
 });
 
-function openPathEditor(node, pathsDataWidget) {
-    const frameWidthWidget = node.widgets.find(w => w.name === "frame_width");
-    const frameHeightWidget = node.widgets.find(w => w.name === "frame_height");
+function getWidgetOrInputValue(node, name, defaultValue) {
+    let currentNode = node;
+    let currentSearchName = name;
+    let visited = new Set();
+    
+    for (let i = 0; i < 20; i++) { 
+        if (!currentNode) break;
+        
+        // Prevent infinite loops in case of complex/cyclic graph routing
+        if (visited.has(currentNode.id)) break;
+        visited.add(currentNode.id);
+        
+        let foundLink = false;
 
-    const frameWidth = frameWidthWidget ? frameWidthWidget.value : 512;
-    const frameHeight = frameHeightWidget ? frameHeightWidget.value : 512;
+        // 1. Prioritize Inputs (Standard physical wires)
+        if (currentNode.inputs) {
+            const input = currentNode.inputs.find(inp => inp.name === currentSearchName);
+            if (input && input.link !== null && input.link !== undefined) {
+                const link = app.graph.links[input.link];
+                if (link) {
+                    currentNode = app.graph.getNodeById(link.origin_id);
+                    if (currentNode && currentNode.outputs && currentNode.outputs[link.origin_slot]) {
+                        currentSearchName = currentNode.outputs[link.origin_slot].name;
+                    } else {
+                        currentSearchName = "value";
+                    }
+                    foundLink = true;
+                }
+            }
+        }
+        
+        // We successfully followed a wire upstream, run the loop again on the new node
+        if (foundLink) continue;
+
+        // 2. Handle "GetNode" to "SetNode" virtual wires
+        const cClass = currentNode.comfyClass || "";
+        const cType = currentNode.type || "";
+        
+        if (cClass === "GetNode" || cType === "GetNode" || cClass === "Anything Anywhere Getter") {
+            // Find the variable name it is requesting (usually 'constant', 'Value', or just the 1st widget)
+            const getWidget = currentNode.widgets?.find(w => w.name === "constant" || w.name === "Value") || (currentNode.widgets ? currentNode.widgets[0] : null);
+            
+            if (getWidget && getWidget.value) {
+                const varName = getWidget.value;
+                
+                // Scan the entire graph to find the SetNode broadcasting this variable
+                const setNode = app.graph._nodes.find(n => {
+                    // Safe access to prevent 'includes of undefined' errors
+                    const nClass = n.comfyClass || "";
+                    const nType = n.type || "";
+                    
+                    const isSetNode = nClass.includes("SetNode") || nType.includes("SetNode") || nClass.includes("Anything Anywhere Setter");
+                    if (!isSetNode) return false;
+                    
+                    const setWidget = n.widgets?.find(w => w.name === "constant" || w.name === "Value") || (n.widgets ? n.widgets[0] : null);
+                    return setWidget && setWidget.value === varName;
+                });
+                
+                if (setNode) {
+                    // Virtual wire successful! Jump to the Set node and continue tracing its input
+                    currentNode = setNode;
+                    currentSearchName = (setNode.inputs && setNode.inputs.length > 0) ? setNode.inputs[0].name : "value";
+                    continue; 
+                }
+            }
+        }
+
+        // 3. If no physical or virtual wire is connected, fall back to the Widget value
+        if (currentNode.widgets) {
+            let widget = currentNode.widgets.find(w => w.name === currentSearchName || w.name === "value");
+            
+            // If we traced up to an INTConstant primitive, it usually stores its data in the first widget
+            if (!widget && currentNode.widgets.length > 0) {
+                widget = currentNode.widgets[0]; 
+            }
+            
+            if (widget && widget.value !== undefined) {
+                return widget.value;
+            }
+        }
+        
+        break; // Dead end reached
+    }
+    
+    return defaultValue;
+}
+
+function openPathEditor(node, pathsDataWidget) {
+    // Try to recover last known canvas size if available
+    let fallbackW = 512;
+    let fallbackH = 512;
+    try {
+        const data = JSON.parse(pathsDataWidget.value);
+        if (data.canvas_size) {
+            if (data.canvas_size.width > 0) fallbackW = data.canvas_size.width;
+            if (data.canvas_size.height > 0) fallbackH = data.canvas_size.height;
+        }
+    } catch (e) {}
+
+    let frameWidth = parseInt(getWidgetOrInputValue(node, "frame_width", fallbackW));
+    let frameHeight = parseInt(getWidgetOrInputValue(node, "frame_height", fallbackH));
+
+    // Fallback if connected to Set/Get nodes (which return string variable names resulting in NaN)
+    if (isNaN(frameWidth) || frameWidth <= 0) frameWidth = fallbackW;
+    if (isNaN(frameHeight) || frameHeight <= 0) frameHeight = fallbackH;
 
     const modal = new PathEditorModal(node, pathsDataWidget, frameWidth, frameHeight);
     modal.show();
@@ -262,8 +361,6 @@ class PathEditorModal {
             img.onload = () => {
                 this.backgroundImage = img;
                 if (this.canvas) {
-                    this.canvas.width = img.width;
-                    this.canvas.height = img.height;
                     this.render();
                 }
             };
@@ -296,8 +393,6 @@ class PathEditorModal {
             const img = new Image();
             img.onload = () => {
                 this.backgroundImage = img;
-                this.canvas.width = img.width;
-                this.canvas.height = img.height;
                 this.pathsDataWidget._cachedBackgroundImage = event.target.result;
                 this.render();
             };
@@ -577,8 +672,6 @@ class PathEditorModal {
                     const img = new Image();
                     img.onload = () => {
                         this.backgroundImage = img;
-                        this.canvas.width = img.width;
-                        this.canvas.height = img.height;
                         this.pathsDataWidget._cachedBackgroundImage = event.target.result;
                         this.render();
                     };
@@ -594,8 +687,6 @@ class PathEditorModal {
         if (confirm('Clear background image?')) {
             this.backgroundImage = null;
             this.pathsDataWidget._cachedBackgroundImage = null;
-            this.canvas.width = this.frameWidth;
-            this.canvas.height = this.frameHeight;
             this.render();
         }
     }
@@ -831,20 +922,22 @@ class PathEditorModal {
         return minDimension / baseResolution;
     }
 
-    render() {
+render() {
         if (!this.ctx) return;
 
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+        this.ctx.fillStyle = 'rgb(30, 30, 30)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
         if (this.backgroundImage && this.backgroundImage.complete) {
             this.ctx.save();
             this.ctx.globalAlpha = this.backgroundOpacity;
-            this.ctx.drawImage(this.backgroundImage, 0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.drawImage(this.backgroundImage, 0, 0); 
             this.ctx.restore();
-        } else {
-            this.ctx.fillStyle = '#333';
-            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         }
+
+        if (this.updateStats) this.updateStats();
 
         this.paths.forEach((path, index) => {
             this.drawPath(path, index === this.selectedPathIndex);
@@ -1509,15 +1602,24 @@ class PathEditorModal {
         draw(); 
     }
 
+    updateStats() {
+        if (!this.statsContainer) return;
+        const staticCount = this.paths.filter(p => p.isSinglePoint || p.points.length === 1).length;
+        const motionCount = this.paths.length - staticCount;
+        const imgW = this.backgroundImage ? this.backgroundImage.width : 0;
+        const imgH = this.backgroundImage ? this.backgroundImage.height : 0;
+        const canvasW = this.canvas ? this.canvas.width : this.frameWidth;
+        const canvasH = this.canvas ? this.canvas.height : this.frameHeight;
+        this.statsContainer.textContent = `Canvas: ${canvasW} x ${canvasH} | Image: ${imgW} x ${imgH} | Total: ${this.paths.length} paths (${staticCount} static, ${motionCount} motion)`;
+    }
+
     createFooter() {
         const footer = document.createElement('div');
         footer.style.cssText = 'padding: 15px 20px; border-top: 1px solid #444; display: flex; justify-content: space-between; align-items: center; gap: 10px;';
 
-        const statsContainer = document.createElement('div');
-        statsContainer.style.cssText = 'color: #888; font-size: 12px;';
-        const staticCount = this.paths.filter(p => p.isSinglePoint || p.points.length === 1).length;
-        const motionCount = this.paths.length - staticCount;
-        statsContainer.textContent = `Total: ${this.paths.length} paths (${staticCount} static, ${motionCount} motion)`;
+        this.statsContainer = document.createElement('div');
+        this.statsContainer.style.cssText = 'color: #888; font-size: 12px;';
+        this.updateStats();
 
         const buttonContainer = document.createElement('div');
         buttonContainer.style.cssText = 'display: flex; gap: 10px;';
@@ -1538,11 +1640,10 @@ class PathEditorModal {
         buttonContainer.appendChild(cancelBtn);
         buttonContainer.appendChild(saveBtn);
 
-        footer.appendChild(statsContainer);
+        footer.appendChild(this.statsContainer);
         footer.appendChild(buttonContainer);
         this.container.appendChild(footer);
     }
-
     show() {
         if (!document.getElementById('wanmove-path-animator-styles')) {
             const style = document.createElement('style');

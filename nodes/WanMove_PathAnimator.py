@@ -124,10 +124,6 @@ Includes custom Bezier easing support and timeline visibility controls.
     def animate_paths(self, frame_width, frame_height, frame_count, 
                      paths_data='{"paths":[], "canvas_size": {"width": 512, "height": 512}}', image=None):
         
-        if image is not None:
-            # Override width and height if an input image is provided (shape is [Batch, Height, Width, Channels])
-            frame_height, frame_width = image.shape[1:3]
-
         try:
             paths_obj = json.loads(paths_data)
             paths = paths_obj.get('paths',[])
