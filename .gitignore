@@ -18,6 +18,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+.ignore/
 
 .DS_Store
 .vscode/

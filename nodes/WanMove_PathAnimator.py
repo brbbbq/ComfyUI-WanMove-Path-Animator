@@ -166,29 +166,60 @@ Includes custom Bezier easing support and timeline visibility controls.
             if not resampled_points:
                 continue
 
-            track_coords =[]
-            track_mask = []
-            
-            first_point = {"x": int(round(resampled_points[0]["x"])), "y": int(round(resampled_points[0]["y"]))}
-            last_point = {"x": int(round(resampled_points[-1]["x"])), "y": int(round(resampled_points[-1]["y"]))}
+            qty = path.get('qty', 0)
+            spread = path.get('spread', 0.05)
+            total_tracks = 1 + qty
+            track_spread_px = spread * (frame_width + frame_height) / 2.0
 
-            # 3. Padding Start
-            for _ in range(start_frame):
-                track_coords.append(first_point)
-                track_mask.append(1.0 if visibility_mode == 'static' else 0.0)
+            tangents =[]
+            num_pts = len(resampled_points)
+            for i in range(num_pts):
+                if num_pts > 1:
+                    if i < num_pts - 1:
+                        tx = resampled_points[i+1]['x'] - resampled_points[i]['x']
+                        ty = resampled_points[i+1]['y'] - resampled_points[i]['y']
+                    else:
+                        tx = resampled_points[i]['x'] - resampled_points[i-1]['x']
+                        ty = resampled_points[i]['y'] - resampled_points[i-1]['y']
+                else:
+                    tx, ty = 0.0, 0.0
                 
-            # 4. Animated Frames
-            for p in resampled_points:
-                track_coords.append({"x": int(round(p["x"])), "y": int(round(p["y"]))})
-                track_mask.append(1.0)
-                
-            # 5. Padding End
-            for _ in range(frame_count - end_frame - 1):
-                track_coords.append(last_point)
-                track_mask.append(1.0 if visibility_mode == 'static' else 0.0)
+                length = math.sqrt(tx**2 + ty**2)
+                if length > 0:
+                    tangents.append((-ty / length, tx / length))
+                else:
+                    tangents.append((1.0, 0.0))
 
-            coord_tracks.append(track_coords)
-            visibility_tracks.append(track_mask)
+            for track_idx in range(total_tracks):
+                track_coords = []
+                track_mask =[]
+                offset = (track_idx - (total_tracks - 1) / 2.0) * track_spread_px
+
+                perp_x_start, perp_y_start = tangents[0]
+                perp_x_end, perp_y_end = tangents[-1]
+
+                first_point = {"x": int(round(resampled_points[0]["x"] + perp_x_start * offset)), 
+                               "y": int(round(resampled_points[0]["y"] + perp_y_start * offset))}
+                last_point = {"x": int(round(resampled_points[-1]["x"] + perp_x_end * offset)), 
+                              "y": int(round(resampled_points[-1]["y"] + perp_y_end * offset))}
+
+                # 3. Padding Start
+                for _ in range(start_frame):
+                    track_coords.append(first_point)
+                    track_mask.append(1.0 if visibility_mode == 'static' else 0.0)
+                    
+                # 4. Animated Frames
+                for p, (perp_x, perp_y) in zip(resampled_points, tangents):
+                    track_coords.append({"x": int(round(p["x"] + perp_x * offset)), "y": int(round(p["y"] + perp_y * offset))})
+                    track_mask.append(1.0)
+                    
+                # 5. Padding End
+                for _ in range(frame_count - end_frame - 1):
+                    track_coords.append(last_point)
+                    track_mask.append(1.0 if visibility_mode == 'static' else 0.0)
+
+                coord_tracks.append(track_coords)
+                visibility_tracks.append(track_mask)
 
         # 6. Generate JSON string (Matches existing legacy functionality)
         coord_string = json.dumps(coord_tracks)

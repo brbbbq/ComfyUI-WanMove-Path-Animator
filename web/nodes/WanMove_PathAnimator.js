@@ -420,8 +420,18 @@ class PathEditorModal {
         try {
             const data = JSON.parse(this.pathsDataWidget.value);
             this.paths = data.paths ||[];
+            // Preserve the original resolution these paths were drawn at
+            if (data.canvas_size && data.canvas_size.width > 0) {
+                this.baseCanvasWidth = data.canvas_size.width;
+                this.baseCanvasHeight = data.canvas_size.height;
+            } else {
+                this.baseCanvasWidth = this.frameWidth;
+                this.baseCanvasHeight = this.frameHeight;
+            }
         } catch (e) {
             this.paths =[];
+            this.baseCanvasWidth = this.frameWidth;
+            this.baseCanvasHeight = this.frameHeight;
         }
     }
 
@@ -429,8 +439,8 @@ class PathEditorModal {
         const data = {
             paths: this.paths,
             canvas_size: {
-                width: this.canvas.width,
-                height: this.canvas.height
+                width: this.baseCanvasWidth, // Save strictly against the original base size
+                height: this.baseCanvasHeight
             }
         };
         this.pathsDataWidget.value = JSON.stringify(data);
@@ -439,6 +449,9 @@ class PathEditorModal {
             this.node._updatePathCount();
         }
     }
+
+    getScaleX() { return this.canvas.width / this.baseCanvasWidth; }
+    getScaleY() { return this.canvas.height / this.baseCanvasHeight; }
 
     getRandomColor() {
         const colors =['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2'];
@@ -696,8 +709,8 @@ class PathEditorModal {
         if (!numPoints || isNaN(numPoints) || numPoints < 1) return;
 
         const count = parseInt(numPoints);
-        const w = this.canvas.width;
-        const h = this.canvas.height;
+        const w = this.baseCanvasWidth;
+        const h = this.baseCanvasHeight;
         const perimeter = 2 * (w + h);
         const spacing = perimeter / count;
 
@@ -718,7 +731,9 @@ class PathEditorModal {
                 isSinglePoint: true,
                 startTime: 0.0,
                 endTime: 1.0,
-                bezier_pts:[0.0, 0.0, 0.0, 1.0, 1.0, 1.0], // Default Linear (6 parameters now)
+                qty: 0,
+                spread: 0.05,
+                bezier_pts:[0.0, 0.0, 0.0, 1.0, 1.0, 1.0],
                 visibilityMode: 'pop'
             };
             this.paths.push(path);
@@ -757,10 +772,66 @@ class PathEditorModal {
         const rect = this.canvas.getBoundingClientRect();
         const scaleX = this.canvas.width / rect.width;
         const scaleY = this.canvas.height / rect.height;
+        // Divide by visual scale so stored points remain in Base Coordinate space
         return {
-            x: (e.clientX - rect.left) * scaleX,
-            y: (e.clientY - rect.top) * scaleY
+            x: ((e.clientX - rect.left) * scaleX) / this.getScaleX(),
+            y: ((e.clientY - rect.top) * scaleY) / this.getScaleY()
         };
+    }
+
+    onMouseMove(e) {
+        if (this.isDrawing && this.tool === 'pencil') {
+            const pos = this.getCanvasCoords(e);
+            const sx = this.getScaleX();
+            const sy = this.getScaleY();
+
+            if (this.shiftPressed && this.currentPath.points.length > 0) {
+                const lastPoint = this.currentPath.points[this.currentPath.points.length - 1];
+                
+                // Perform shift-angle logic in Visual space to ensure true angles even if aspect ratio stretches
+                const vx = pos.x * sx;
+                const vy = pos.y * sy;
+                const lvx = lastPoint.x * sx;
+                const lvy = lastPoint.y * sy;
+                
+                const vdx = Math.abs(vx - lvx);
+                const vdy = Math.abs(vy - lvy);
+
+                let constrainedVx, constrainedVy;
+                if (vdx > vdy * 2) {
+                    constrainedVx = vx; constrainedVy = lvy;
+                } else if (vdy > vdx * 2) {
+                    constrainedVx = lvx; constrainedVy = vy;
+                } else {
+                    const dist = Math.min(vdx, vdy);
+                    constrainedVx = lvx + (vx > lvx ? dist : -dist);
+                    constrainedVy = lvy + (vy > lvy ? dist : -dist);
+                }
+
+                // Convert back to Base space for saving
+                const constrainedPos = { x: constrainedVx / sx, y: constrainedVy / sy };
+
+                if (!this.shiftPreviewPoint) {
+                    this.shiftPreviewPoint = true;
+                    this.currentPath.points.push(constrainedPos);
+                } else {
+                    this.currentPath.points[this.currentPath.points.length - 1] = constrainedPos;
+                }
+                this.render();
+            } else {
+                this.shiftPreviewPoint = false;
+                const lastPoint = this.currentPath.points[this.currentPath.points.length - 1];
+                
+                const visualDx = (pos.x - lastPoint.x) * sx;
+                const visualDy = (pos.y - lastPoint.y) * sy;
+                const dist = Math.sqrt(visualDx * visualDx + visualDy * visualDy);
+
+                if (dist > 3 * this.getRenderScale()) { 
+                    this.currentPath.points.push(pos);
+                    this.render();
+                }
+            }
+        }
     }
 
     onMouseDown(e) {
@@ -777,6 +848,8 @@ class PathEditorModal {
                 isSinglePoint: false,
                 startTime: 0.0,
                 endTime: 1.0,
+                qty: 0,
+                spread: 0.05,
                 bezier_pts:[0.0, 0.0, 0.0, 1.0, 1.0, 1.0], // Default linear
                 visibilityMode: 'pop'
             };
@@ -789,6 +862,8 @@ class PathEditorModal {
                 isSinglePoint: true,
                 startTime: 0.0,
                 endTime: 1.0,
+                qty: 0,
+                spread: 0.05,
                 bezier_pts:[0.0, 0.0, 0.0, 1.0, 1.0, 1.0], // Default linear
                 visibilityMode: 'pop'
             };
@@ -801,48 +876,6 @@ class PathEditorModal {
             this.selectedPathIndex = this.findPathAtPoint(pos);
             this.updateSidebar();
             this.render();
-        }
-    }
-
-    onMouseMove(e) {
-        if (this.isDrawing && this.tool === 'pencil') {
-            const pos = this.getCanvasCoords(e);
-
-            if (this.shiftPressed && this.currentPath.points.length > 0) {
-                const lastPoint = this.currentPath.points[this.currentPath.points.length - 1];
-                const dx = Math.abs(pos.x - lastPoint.x);
-                const dy = Math.abs(pos.y - lastPoint.y);
-
-                let constrainedPos;
-                if (dx > dy * 2) {
-                    constrainedPos = { x: pos.x, y: lastPoint.y };
-                } else if (dy > dx * 2) {
-                    constrainedPos = { x: lastPoint.x, y: pos.y };
-                } else {
-                    const dist = Math.min(dx, dy);
-                    constrainedPos = {
-                        x: lastPoint.x + (pos.x > lastPoint.x ? dist : -dist),
-                        y: lastPoint.y + (pos.y > lastPoint.y ? dist : -dist)
-                    };
-                }
-
-                if (!this.shiftPreviewPoint) {
-                    this.shiftPreviewPoint = true;
-                    this.currentPath.points.push(constrainedPos);
-                } else {
-                    this.currentPath.points[this.currentPath.points.length - 1] = constrainedPos;
-                }
-                this.render();
-            } else {
-                this.shiftPreviewPoint = false;
-                const lastPoint = this.currentPath.points[this.currentPath.points.length - 1];
-                const dist = Math.sqrt(Math.pow(pos.x - lastPoint.x, 2) + Math.pow(pos.y - lastPoint.y, 2));
-
-                if (dist > 3) { 
-                    this.currentPath.points.push(pos);
-                    this.render();
-                }
-            }
         }
     }
 
@@ -872,12 +905,17 @@ class PathEditorModal {
     findPathAtPoint(point, baseThreshold = 10) {
         const scale = this.getRenderScale();
         const threshold = baseThreshold * scale;
+        const sx = this.getScaleX();
+        const sy = this.getScaleY();
+        const visualPoint = { x: point.x * sx, y: point.y * sy };
 
         for (let i = this.paths.length - 1; i >= 0; i--) {
             const path = this.paths[i];
             if (path.isSinglePoint || path.points.length === 1) {
                 const p = path.points[0];
-                const dist = Math.sqrt(Math.pow(point.x - p.x, 2) + Math.pow(point.y - p.y, 2));
+                const px = p.x * sx;
+                const py = p.y * sy;
+                const dist = Math.sqrt(Math.pow(visualPoint.x - px, 2) + Math.pow(visualPoint.y - py, 2));
                 if (dist < threshold) return i;
             }
         }
@@ -886,9 +924,9 @@ class PathEditorModal {
             const path = this.paths[i];
             if (!path.isSinglePoint && path.points.length > 1) {
                 for (let j = 0; j < path.points.length - 1; j++) {
-                    const p1 = path.points[j];
-                    const p2 = path.points[j + 1];
-                    const dist = this.distanceToSegment(point, p1, p2);
+                    const p1 = { x: path.points[j].x * sx, y: path.points[j].y * sy };
+                    const p2 = { x: path.points[j + 1].x * sx, y: path.points[j + 1].y * sy };
+                    const dist = this.distanceToSegment(visualPoint, p1, p2);
                     if (dist < threshold) return i;
                 }
             }
@@ -952,78 +990,125 @@ render() {
         const isSinglePoint = path.isSinglePoint || path.points.length === 1;
         const scale = this.getRenderScale();
         const neonGreen = '#00FF41';
+        const sx = this.getScaleX();
+        const sy = this.getScaleY();
+
+        const qty = path.qty || 0;
+        const spread = path.spread !== undefined ? path.spread : 0.05;
+        const totalTracks = 1 + qty;
+        const spreadBase = spread * (this.baseCanvasWidth + this.baseCanvasHeight) / 2.0;
 
         if (isSinglePoint) {
-            const point = path.points[0];
-            const baseSize = isSelected ? 14 : 8;
-            const size = baseSize * scale;
+            for (let t = 0; t < totalTracks; t++) {
+                const offset = (t - (totalTracks - 1) / 2.0) * spreadBase;
+                const point = path.points[0];
+                const px = (point.x + offset) * sx;
+                const py = point.y * sy;
+                const isCenter = t === (totalTracks - 1) / 2.0;
+                
+                const baseSize = (isSelected && isCenter) ? 14 : 8;
+                const size = baseSize * scale;
+                const displayColor = (isSelected && isCenter) ? neonGreen : (isSelected ? 'rgba(0, 255, 65, 0.5)' : path.color);
 
-            this.ctx.fillStyle = isSelected ? neonGreen : path.color;
-            this.ctx.fillRect(point.x - size / 2, point.y - size / 2, size, size);
+                this.ctx.fillStyle = displayColor;
+                this.ctx.fillRect(px - size / 2, py - size / 2, size, size);
 
-            this.ctx.strokeStyle = isSelected ? neonGreen : '#fff';
-            this.ctx.lineWidth = 2 * scale;
-            this.ctx.strokeRect(point.x - size / 2, point.y - size / 2, size, size);
+                this.ctx.strokeStyle = displayColor;
+                this.ctx.lineWidth = 2 * scale;
+                this.ctx.strokeRect(px - size / 2, py - size / 2, size, size);
 
-            if (isSelected) {
-                this.ctx.fillStyle = neonGreen;
-                this.ctx.font = `bold ${12 * scale}px sans-serif`;
-                this.ctx.fillText('Static', point.x + 10 * scale, point.y - 10 * scale);
+                if (isSelected && isCenter) {
+                    this.ctx.fillStyle = neonGreen;
+                    this.ctx.font = `bold ${12 * scale}px sans-serif`;
+                    let text = 'Static';
+                    if (qty > 0) text += ` + ${qty}`;
+                    this.ctx.fillText(text, px + 10 * scale, py - 10 * scale);
+                }
             }
         } else if (path.points.length >= 2) {
-            this.ctx.beginPath();
-            this.ctx.moveTo(path.points[0].x, path.points[0].y);
-
-            for (let i = 1; i < path.points.length; i++) {
-                this.ctx.lineTo(path.points[i].x, path.points[i].y);
+            const tangents =[];
+            const pts = path.points;
+            for (let i = 0; i < pts.length; i++) {
+                let tx, ty;
+                if (pts.length > 1) {
+                    if (i < pts.length - 1) {
+                        tx = pts[i+1].x - pts[i].x; ty = pts[i+1].y - pts[i].y;
+                    } else {
+                        tx = pts[i].x - pts[i-1].x; ty = pts[i].y - pts[i-1].y;
+                    }
+                } else { tx = 0; ty = 0; }
+                const len = Math.sqrt(tx*tx + ty*ty);
+                if (len > 0) tangents.push({px: -ty/len, py: tx/len});
+                else tangents.push({px: 1, py: 0});
             }
 
-            this.ctx.strokeStyle = isSelected ? neonGreen : path.color;
-            this.ctx.lineWidth = (isSelected ? this.pathThickness + 0.1 : this.pathThickness) * scale;
-            this.ctx.lineCap = 'round';
-            this.ctx.lineJoin = 'round';
-            this.ctx.stroke();
+            for (let t = 0; t < totalTracks; t++) {
+                const offset = (t - (totalTracks - 1) / 2.0) * spreadBase;
+                const isCenter = t === (totalTracks - 1) / 2.0;
+                
+                this.ctx.beginPath();
+                for (let i = 0; i < pts.length; i++) {
+                    const px = (pts[i].x + tangents[i].px * offset) * sx;
+                    const py = (pts[i].y + tangents[i].py * offset) * sy;
+                    if (i === 0) this.ctx.moveTo(px, py);
+                    else this.ctx.lineTo(px, py);
+                }
 
-            this.ctx.save();
-            this.ctx.beginPath();
-            this.ctx.moveTo(path.points[0].x, path.points[0].y);
+                this.ctx.strokeStyle = (isSelected && isCenter) ? neonGreen : (isSelected ? 'rgba(0, 255, 65, 0.5)' : path.color);
+                this.ctx.lineWidth = (isSelected && isCenter ? this.pathThickness + 0.1 : this.pathThickness) * scale;
+                if (!isCenter) this.ctx.lineWidth = Math.max(1, this.pathThickness * 0.5) * scale;
+                this.ctx.lineCap = 'round';
+                this.ctx.lineJoin = 'round';
+                this.ctx.stroke();
 
-            for (let i = 1; i < path.points.length; i++) {
-                this.ctx.lineTo(path.points[i].x, path.points[i].y);
+                this.ctx.save();
+                this.ctx.beginPath();
+                for (let i = 0; i < pts.length; i++) {
+                    const px = (pts[i].x + tangents[i].px * offset) * sx;
+                    const py = (pts[i].y + tangents[i].py * offset) * sy;
+                    if (i === 0) this.ctx.moveTo(px, py);
+                    else this.ctx.lineTo(px, py);
+                }
+                const dashLength = 10 * scale;
+                const gapLength = 10 * scale;
+                this.ctx.setLineDash([dashLength, gapLength]);
+                this.ctx.lineDashOffset = -this.animationOffset * scale;
+                this.ctx.strokeStyle = (isSelected && isCenter) ? 'rgba(0, 255, 65, 0.8)' : 'rgba(255, 255, 255, 0.4)';
+                this.ctx.lineWidth = Math.max(1, this.pathThickness * 0.5) * scale;
+                this.ctx.stroke();
+                this.ctx.restore();
             }
-
-            const dashLength = 10 * scale;
-            const gapLength = 10 * scale;
-            this.ctx.setLineDash([dashLength, gapLength]);
-            this.ctx.lineDashOffset = -this.animationOffset * scale;
-            this.ctx.strokeStyle = isSelected ? 'rgba(0, 255, 65, 0.8)' : 'rgba(255, 255, 255, 0.6)';
-            this.ctx.lineWidth = Math.max(1, this.pathThickness * 0.5) * scale;
-            this.ctx.stroke();
-            this.ctx.restore();
 
             if (isSelected) {
                 path.points.forEach((point, idx) => {
+                    const px = point.x * sx;
+                    const py = point.y * sy;
+                    
                     this.ctx.beginPath();
-                    this.ctx.arc(point.x, point.y, Math.max(6, this.pathThickness + 2) * scale, 0, Math.PI * 2);
+                    this.ctx.arc(px, py, Math.max(6, this.pathThickness + 2) * scale, 0, Math.PI * 2);
                     this.ctx.fillStyle = neonGreen;
                     this.ctx.fill();
 
                     this.ctx.beginPath();
-                    this.ctx.arc(point.x, point.y, Math.max(3, this.pathThickness * 0.6) * scale, 0, Math.PI * 2);
+                    this.ctx.arc(px, py, Math.max(3, this.pathThickness * 0.6) * scale, 0, Math.PI * 2);
                     this.ctx.fillStyle = '#000';
                     this.ctx.fill();
 
                     if (path.points.length < 20) {
                         this.ctx.fillStyle = neonGreen;
                         this.ctx.font = `bold ${10 * scale}px sans-serif`;
-                        this.ctx.fillText(idx, point.x + 8 * scale, point.y - 8 * scale);
+                        this.ctx.fillText(idx, px + 8 * scale, py - 8 * scale);
                     }
                 });
 
                 const midPoint = path.points[Math.floor(path.points.length / 2)];
+                const mx = midPoint.x * sx;
+                const my = midPoint.y * sy;
                 this.ctx.fillStyle = neonGreen;
                 this.ctx.font = `bold ${12 * scale}px sans-serif`;
-                this.ctx.fillText(`Motion (${path.points.length} pts)`, midPoint.x + 10 * scale, midPoint.y - 10 * scale);
+                let text = `Motion (${path.points.length} pts)`;
+                if (qty > 0) text += ` + ${qty} Spread`;
+                this.ctx.fillText(text, mx + 10 * scale, my - 10 * scale);
             }
         }
     }
@@ -1233,6 +1318,53 @@ render() {
         timelineSection.appendChild(timelineLabel);
         timelineSection.appendChild(timelineSliderContainer);
         timelineSection.appendChild(inputsContainer);
+
+        // --- Qty and Spread UI Section ---
+        const trackParamsContainer = document.createElement('div');
+        trackParamsContainer.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 10px; color: #ccc; margin-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 6px;';
+
+        const qtyField = createField('Qty', path.qty || 0);
+        qtyField.inp.step = '2';
+        qtyField.inp.min = '0';
+        qtyField.inp.max = '100';
+        
+        const spreadField = createField('Spread', path.spread !== undefined ? path.spread : 0.05);
+        spreadField.inp.step = '0.01';
+        spreadField.inp.type = 'number';
+        spreadField.inp.value = (path.spread !== undefined ? path.spread : 0.05).toFixed(2);
+
+        trackParamsContainer.appendChild(qtyField.wrap);
+        trackParamsContainer.appendChild(spreadField.wrap);
+        
+        const updateTrackParams = () => {
+            let qVal = parseInt(qtyField.inp.value);
+            let sVal = parseFloat(spreadField.inp.value);
+            if (isNaN(qVal)) qVal = 0;
+            if (isNaN(sVal)) sVal = 0.05;
+            
+            // Ensure multiples of 2
+            qVal = Math.max(0, Math.min(100, Math.round(qVal / 2) * 2));
+            qtyField.inp.value = qVal;
+            
+            path.qty = qVal;
+            path.spread = sVal;
+            this.savePaths();
+            this.render();
+        };
+
+        const handleSpreadBlur = () => {
+            updateTrackParams();
+            spreadField.inp.value = parseFloat(spreadField.inp.value).toFixed(2);
+        };
+
+        qtyField.inp.addEventListener('change', updateTrackParams);
+        qtyField.inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { updateTrackParams(); qtyField.inp.blur(); } });
+        
+        spreadField.inp.addEventListener('change', updateTrackParams);
+        spreadField.inp.addEventListener('blur', handleSpreadBlur);
+        spreadField.inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { updateTrackParams(); spreadField.inp.blur(); } });
+
+        timelineSection.appendChild(trackParamsContainer);
 
         // --- Custom Bezier UI Section ---
         const bezierSection = document.createElement('div');
