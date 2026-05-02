@@ -243,7 +243,7 @@ class PathEditorModal {
             ),
             el('div', { className: 'wm-controls-row' },
                 this.createSliderControl('Path Width', 1, 10, this.pathThickness, v => this.pathThickness = v),
-                this.createSliderControl('Background Opacity', 50, 100, this.backgroundOpacity * 100, v => this.backgroundOpacity = v / 100, '%')
+                this.createSliderControl('Background Opacity', 0, 100, this.backgroundOpacity * 100, v => this.backgroundOpacity = v / 100, '%')
             )
         );
     }
@@ -360,7 +360,14 @@ class PathEditorModal {
             );
 
             if (isSel) item.appendChild(this.createTimelineControls(path, index));
-            item.onclick = (e) => { if (!e.target.closest('.wm-timeline-controls')) { this.selectedPathIndex = index; this.updateSidebar(); this.render(); } };
+            item.onclick = (e) => { 
+                if (!e.target.closest('.wm-timeline-controls')) { 
+                    // Toggle selection: if already selected, set to -1 (deselect), else set to index
+                    this.selectedPathIndex = this.selectedPathIndex === index ? -1 : index; 
+                    this.updateSidebar(); 
+                    this.render(); 
+                } 
+            };
             this.pathList.appendChild(item);
         });
     }
@@ -974,19 +981,58 @@ app.registerExtension({
             ComfyUtils.moveWidgetToTop(node, pathsDataWidget);
             pathsDataWidget._cachedBackgroundImage = null;
 
-            node.addWidget("button", "Edit Paths", null, () => openPathEditor(node, pathsDataWidget));
-            const pathCountWidget = node.addWidget("text", "Path Count", "0 paths", null);
-            pathCountWidget.disabled = false;
+            // 1. Hide the paths_data text widget completely from the UI layout
+            pathsDataWidget.type = "hidden";
+            pathsDataWidget.hidden = true; // <-- Added to ensure LiteGraph ignores it
+            pathsDataWidget.computeSize = () => [0, -4]; 
+            if (pathsDataWidget.inputEl) {
+                pathsDataWidget.inputEl.style.display = "none";
+            }
 
+            node.addWidget("button", "Edit Paths", null, () => openPathEditor(node, pathsDataWidget));
+
+            // 2. Setup the pathCountText property instead of a widget
             node._updatePathCount = () => {
                 try {
                     const data = JSON.parse(pathsDataWidget.value);
                     const count = data.paths?.length || 0;
                     const staticCount = data.paths?.filter(p => p.isSinglePoint || p.points.length === 1).length || 0;
-                    pathCountWidget.value = `${count} path${count !== 1 ? 's' : ''} (${staticCount} static, ${count - staticCount} motion)`;
-                } catch (e) { pathCountWidget.value = "0 paths"; }
+                    node.pathCountText = `${count} path${count !== 1 ? 's' : ''} (${count - staticCount} motion, ${staticCount} static)`;
+                } catch (e) { 
+                    node.pathCountText = "0 paths"; 
+                }
+                node.setDirtyCanvas(true, false);
             };
             node._updatePathCount();
+
+            // 3. Expand the node slightly to make room for the text at the bottom
+            const onComputeSize = node.computeSize;
+            node.computeSize = function(out) {
+                let size = onComputeSize ? onComputeSize.apply(this, arguments) : [200, 100];
+                size[1] += 24; // Add 24px padding at the bottom
+                return size;
+            };
+
+            // 4. Draw the status text at the bottom of the node background
+            const onDrawForeground = node.onDrawForeground;
+            node.onDrawForeground = function(ctx) {
+                if (onDrawForeground) onDrawForeground.apply(this, arguments);
+                
+                if (this.pathCountText) {
+                    ctx.save();
+                    ctx.font = "12px sans-serif";
+                    ctx.fillStyle = "var(--descrip-text, #a9a9a9)";
+                    ctx.textAlign = "center";
+                    ctx.fillText(this.pathCountText, this.size[0] / 2, this.size[1] - 8);
+                    ctx.restore();
+                }
+            };
+
+            // 5. Shrink node to minimum size shortly after creation <-- ADDED THIS BLOCK
+            setTimeout(() => {
+                node.size = node.computeSize([0, 0]);
+                app.graph.setDirtyCanvas(true, true);
+            }, 10);
         }
     }
 });

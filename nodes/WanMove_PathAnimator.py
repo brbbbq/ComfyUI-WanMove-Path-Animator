@@ -148,8 +148,8 @@ class PathStateFactory:
 # ==========================================
 class WanMove_PathAnimator:
 
-    RETURN_TYPES = ("TRACKS", "STRING")
-    RETURN_NAMES = ("tracks", "coordinates")
+    RETURN_TYPES = ("TRACKS", "STRING", "STRING")
+    RETURN_NAMES = ("tracks", "coordinates", "debug")
     FUNCTION = "animate_paths"
     CATEGORY = "WanMove Path Animator"
     DESCRIPTION = """
@@ -164,7 +164,7 @@ Includes custom Bezier easing support and timeline visibility controls.
             "required": {
                 "frame_width": ("INT", {"default": Config.DEFAULT_WIDTH, "min": 64, "max": 4096, "step": 1}),
                 "frame_height": ("INT", {"default": Config.DEFAULT_HEIGHT, "min": 64, "max": 4096, "step": 1}),
-                "frame_count": ("INT", {"default": 30, "min": 1, "max": 500, "step": 1}),
+                "frame_count": ("INT", {"default": 41, "min": 1, "max": 500, "step": 1}),
             },
             "optional": {
                 "image": ("IMAGE",),
@@ -256,4 +256,4 @@ Includes custom Bezier easing support and timeline visibility controls.
 
         print(f"WanMove_PathAnimator: Generated {len(coord_tracks)} tracks for Wan-Move")
 
-        return ({"track_path": tracks_tensor, "track_visibility": track_visibility}, coord_string)
+        return ({"track_path": tracks_tensor, "track_visibility": track_visibility}, coord_string, paths_data)
