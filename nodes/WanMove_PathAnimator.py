@@ -167,9 +167,9 @@ Includes custom Bezier easing support and timeline visibility controls.
                 continue
 
             qty = path.get('qty', 0)
-            spread = path.get('spread', 0.05)
+            spread = path.get('spread', 1.50)
             total_tracks = 1 + qty
-            track_spread_px = spread * (frame_width + frame_height) / 2.0
+            track_spread_px = spread * 0.01 * (frame_width + frame_height) / 2.0
 
             tangents =[]
             num_pts = len(resampled_points)
