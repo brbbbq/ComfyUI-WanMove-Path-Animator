@@ -123,7 +123,7 @@ const ComfyUtils = {
         if (idx > 0) { node.widgets.splice(idx, 1); node.widgets.unshift(widget); }
     },
     getWidgetOrInputValue(node, name, defaultValue) {
-        let curr = node, currName = name, visited = new Set();
+        let curr = node, currName = name, visited = new Set(), hasLink = false;
         for (let i = 0; i < 20; i++) { 
             if (!curr || visited.has(curr.id)) break;
             visited.add(curr.id);
@@ -132,6 +132,7 @@ const ComfyUtils = {
             if (curr.inputs) {
                 const input = curr.inputs.find(inp => inp.name === currName);
                 if (input && input.link != null) {
+                    hasLink = true;
                     const link = app.graph.links[input.link];
                     if (link && (curr = app.graph.getNodeById(link.origin_id))) {
                         currName = (curr.outputs && curr.outputs[link.origin_slot]) ? curr.outputs[link.origin_slot].name : "value";
@@ -152,9 +153,66 @@ const ComfyUtils = {
 
             const widget = curr.widgets?.find(w => w.name === currName || w.name === "value") || curr.widgets?.[0];
             if (widget && widget.value !== undefined) return widget.value;
+            if (hasLink) return defaultValue;
             break;
         }
+        const origWidget = node.widgets?.find(w => w.name === name);
+        if (origWidget && origWidget.value !== undefined) return origWidget.value;
         return defaultValue;
+    },
+    getConnectedImageUrl(node, inputName = "image") {
+        if (!node.inputs) return null;
+        const imgInput = node.inputs.find(i => i.name === inputName);
+        if (!imgInput || imgInput.link === null) return null;
+        
+        let curr = app.graph.getNodeById(app.graph.links[imgInput.link]?.origin_id);
+        const visited = new Set();
+        
+        while (curr && !visited.has(curr.id)) {
+            visited.add(curr.id);
+            if (curr.imgs?.length > 0) return curr.imgs[0].src;
+            if (curr.outputs) {
+                for (const out of curr.outputs) if (out.type === "IMAGE" && out.links) {
+                    for (const lid of out.links) {
+                        const child = app.graph.getNodeById(app.graph.links[lid]?.target_id);
+                        if (child?.imgs?.length > 0) return child.imgs[0].src;
+                    }
+                }
+            }
+            const iW = curr.widgets?.find(w => w.name === "image");
+            if (iW?.value) {
+                const val = typeof iW.value === "object" ? iW.value : { filename: iW.value, type: "input", subfolder: "" };
+                if (val.filename) return api.apiURL(`/view?${new URLSearchParams(val).toString()}`);
+            }
+            curr = curr.inputs ? app.graph.getNodeById(app.graph.links[curr.inputs.find(i => i.type === "IMAGE" && i.link)?.link]?.origin_id) : null;
+        }
+        return null;
+    },
+    resolveImageSizeFromLink(node, name) {
+        let curr = node, currName = name, visited = new Set();
+        for (let i = 0; i < 20; i++) {
+            if (!curr || visited.has(curr.id)) break;
+            visited.add(curr.id);
+
+            let foundLink = false;
+            if (curr.inputs) {
+                const input = curr.inputs.find(inp => inp.name === currName);
+                if (input && input.link != null) {
+                    const link = app.graph.links[input.link];
+                    if (link && (curr = app.graph.getNodeById(link.origin_id))) {
+                        currName = (curr.outputs && curr.outputs[link.origin_slot]) ? curr.outputs[link.origin_slot].name : "value";
+                        foundLink = true;
+                    }
+                }
+            }
+            if (!foundLink) break;
+
+            const cType = curr.comfyClass || curr.type || "";
+            if (cType.includes("GetImageSize") || cType.includes("ImageSize") || cType.includes("Get Image Size")) {
+                return this.getConnectedImageUrl(curr, "image");
+            }
+        }
+        return null;
     }
 };
 
@@ -377,7 +435,7 @@ class PathEditorModal {
         const container = el('div', { className: 'wm-timeline-controls' });
 
         // Timeline Range Slider
-        const sPct = (path.startTime || 0) * 100, ePct = (path.endTime || 1) * 100;
+        const sPct = Math.round((path.startTime || 0) * 100), ePct = Math.round((path.endTime !== undefined ? path.endTime : 1) * 100);
         const activeRng = el('div', { className: 'wm-range-active', style: `left:${sPct}%; width:${ePct - sPct}%;` });
         const startHnd = this.createRangeHandle(sPct, true);
         const endHnd = this.createRangeHandle(ePct, false);
@@ -482,7 +540,7 @@ class PathEditorModal {
         document.addEventListener('mousemove', (e) => {
             if (!isDrag || !cont) return;
             const r = cont.getBoundingClientRect();
-            const pct = Math.max(0, Math.min(100, ((e.clientX - r.left) / r.width) * 100));
+            const pct = Math.round(Math.max(0, Math.min(100, ((e.clientX - r.left) / r.width) * 100)));
             const oPct = parseFloat(other.style.left);
             const cPct = isStart ? Math.min(pct, oPct - 1) : Math.max(pct, oPct + 1);
 
@@ -870,35 +928,11 @@ class PathEditorModal {
 
     getConnectedImageUrl() {
         if (!this.node.inputs) return null;
-        const imgInput = this.node.inputs.find(i => i.name === "image");
-        if (!imgInput || imgInput.link === null) return null;
-        
-        let curr = app.graph.getNodeById(app.graph.links[imgInput.link]?.origin_id);
-        const visited = new Set();
-        
-        while (curr && !visited.has(curr.id)) {
-            visited.add(curr.id);
-            if (curr.imgs?.length > 0) return curr.imgs[0].src;
-            if (curr.outputs) {
-                for (const out of curr.outputs) if (out.type === "IMAGE" && out.links) {
-                    for (const lid of out.links) {
-                        const child = app.graph.getNodeById(app.graph.links[lid]?.target_id);
-                        if (child?.imgs?.length > 0) return child.imgs[0].src;
-                    }
-                }
-            }
-            const iW = curr.widgets?.find(w => w.name === "image");
-            if (iW?.value) {
-                const val = typeof iW.value === "object" ? iW.value : { filename: iW.value, type: "input", subfolder: "" };
-                if (val.filename) return api.apiURL(`/view?${new URLSearchParams(val).toString()}`);
-            }
-            curr = curr.inputs ? app.graph.getNodeById(app.graph.links[curr.inputs.find(i => i.type === "IMAGE" && i.link)?.link]?.origin_id) : null;
-        }
         return null;
     }
 
     loadCachedBackgroundImage() {
-        const src = this.getConnectedImageUrl() || this.pathsDataWidget._cachedBackgroundImage;
+        const src = ComfyUtils.getConnectedImageUrl(this.node) || this.pathsDataWidget._cachedBackgroundImage;
         if (src) {
             const img = new Image();
             img.onload = () => { this.backgroundImage = img; if (this.canvas) this.render(); };
@@ -956,7 +990,7 @@ class PathEditorModal {
 // 5. EXTENSION REGISTRATION
 // ==========================================
 
-function openPathEditor(node, pathsDataWidget) {
+async function openPathEditor(node, pathsDataWidget) {
     let w = CONFIG.DEFAULT_SIZE, h = CONFIG.DEFAULT_SIZE;
     try {
         const data = JSON.parse(pathsDataWidget.value);
@@ -964,8 +998,29 @@ function openPathEditor(node, pathsDataWidget) {
         if (data.canvas_size?.height > 0) h = data.canvas_size.height;
     } catch (e) {}
 
-    let fw = parseInt(ComfyUtils.getWidgetOrInputValue(node, "frame_width", w));
-    let fh = parseInt(ComfyUtils.getWidgetOrInputValue(node, "frame_height", h));
+    let fw = parseInt(ComfyUtils.getWidgetOrInputValue(node, "frame_width", null));
+    let fh = parseInt(ComfyUtils.getWidgetOrInputValue(node, "frame_height", null));
+
+    const checkImageSize = async (val, name) => {
+        if (isNaN(val)) {
+            const src = ComfyUtils.resolveImageSizeFromLink(node, name) || ComfyUtils.getConnectedImageUrl(node);
+            if (src) {
+                return await new Promise(resolve => {
+                    const img = new Image();
+                    img.onload = () => resolve(name === "frame_width" ? img.width : img.height);
+                    img.onerror = () => resolve(NaN);
+                    img.src = src;
+                });
+            }
+        }
+        return val;
+    };
+
+    fw = await checkImageSize(fw, "frame_width");
+    fh = await checkImageSize(fh, "frame_height");
+
+    if (isNaN(fw) || fw <= 0) fw = parseInt(node.widgets?.find(w => w.name === "frame_width")?.value) || w;
+    if (isNaN(fh) || fh <= 0) fh = parseInt(node.widgets?.find(w => w.name === "frame_height")?.value) || h;
     
     const modal = new PathEditorModal(node, pathsDataWidget, isNaN(fw) || fw <= 0 ? w : fw, isNaN(fh) || fh <= 0 ? h : fh);
     modal.show();
