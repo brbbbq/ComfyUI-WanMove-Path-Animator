@@ -101,16 +101,12 @@ Basic animation curve to control the rate and direction of movement.
 ![wanMove_path_animator_example-07-spread_2_(extra).webp](assets/wanMove_path_animator_example-07-spread_2_(extra).webp)
 ![wanMove_path_animator_example-08-timeline_3_(cont).webp](assets/wanMove_path_animator_example-08-timeline_3_(cont).webp)
 ![wanMove_path_animator_example-09-lock_perimeter.webp](assets/wanMove_path_animator_example-09-lock_perimeter.webp)
-
 ![wanMove_path_animator_example-10-easeIn.webp](assets/wanMove_path_animator_example-10-easeIn.webp)
 ![wanMove_path_animator_example-11-easeOut.webp](assets/wanMove_path_animator_example-11-easeOut.webp)
 ![wanMove_path_animator_example-12-easeInOut.webp](assets/wanMove_path_animator_example-12-easeInOut.webp)
 ![wanMove_path_animator_example-13-easeOutIn.webp](assets/wanMove_path_animator_example-13-easeOutIn.webp)
 
-## Technical Details
-
 ## Requirements
-
 - Python 3.8+
 - PIL (Pillow)
 - NumPy
@@ -118,9 +114,7 @@ Basic animation curve to control the rate and direction of movement.
 - ComfyUI
 
 ## License
-
 MIT License - See LICENSE file for details
 
 ## Credits
-
-Based on FL Path Animator by Machine Delusions for the Fill-Nodes pack.
+Based on [FL Path Animator](https://github.com/filliptm/ComfyUI_FL-Path-Animator).
