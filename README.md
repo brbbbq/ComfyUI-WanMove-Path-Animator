@@ -1,114 +1,113 @@
 # WanMove Path Animator
+A ComfyUI custom node for creating motion tracks to be used with [Wan-Move](https://github.com/ali-vilab/Wan-Move).
 
-A standalone ComfyUI custom node for creating animated shapes that follow user-drawn paths.
-
-## Features
-
+## 1) Features
 - **Interactive Path Editor** - Visual modal interface for drawing motion paths and static anchor points
 - **Two Path Types**:
   - **Motion Paths** - Draw continuous paths for shapes to follow over time
   - **Static Anchors** - Single-point paths for stationary shapes
-- **Background Image Support** - Load or paste reference images to draw paths on
-- **Visual Effects** - Blur, trails, rotation, borders, and custom colors
-- **Multiple Shapes** - Circle, square, triangle, hexagon, and star
+- **Background Image Support** - Input, load, or paste reference images to draw paths on
+- **Timeline Start & End** - Set when the animation begins and finishes
+- **Animation Curves** - Control the speed and direction of the animation
+- **Path Spread** - Duplicate paths to widen their effects
+- **Visibility** - Modes for 
 
-## Installation
-
+## 2) Installation
 1. Clone or download this repository into your ComfyUI custom_nodes folder:
-```bash
+<code>
 cd ComfyUI/custom_nodes/
 git clone https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator
-```
+</code>
 
 2. Restart ComfyUI
 
-## Usage
-
+## 3) Usage
 ### Basic Workflow
-
-1. Add the "WanMove Path Animator" node to your workflow
-2. Click the **"Edit Paths"** button to open the path editor
-3. Use the toolbar to:
+1. Add the **"WanMove Path Animator"** node to your workflow
+2. Connect image to image input to appear in background.
+3. Click the **"Edit Paths"** button to open the path editor
+4. Optionally load a background image with **🖼️** or paste with **Ctrl+V** (only if there's no image input)
+5. Use the toolbar to:
    - **✏️ Pencil** - Draw motion paths (hold SHIFT for straight lines)
    - **📍 Point** - Add static anchor points
-   - **🗑️ Eraser** - Delete paths by clicking
-   - **↖️ Select** - Select and inspect paths
    - **🔒 Lock Perimeter** - Auto-generate static points around border
-4. Optionally load a background image with **🖼️** or paste with **Ctrl+V**
-5. Press **ESC** to save and close
-6. Configure shape properties in the node
-7. Connect outputs to your workflow
-
-### Keyboard Shortcuts
-
-- **ESC** - Save paths and close editor
-- **SHIFT (hold)** - Draw straight lines (horizontal/vertical/45° diagonal)
-- **Ctrl+V** - Paste background image from clipboard
+6. Use sidebar to:
+   - **🕗 Timeline Range** - Control the Start and End point of the animation
+   - **🧈 Spread** - Create parallel paths
+   - **📈 Custom Easing Curve** - Control the dynamic speed of the animation
+   - **👁️ Visibility Mode** - Set track visibilty properties
+8. Press **ESC**, or click **Save Paths** to save and close
+9. Connect outputs to your workflow
 
 ### Node Parameters
-
-#### Required
-- `frame_width` / `frame_height` - Output frame dimensions
-- `frame_count` - Number of frames to generate
-- `shape` - Shape type (circle, square, triangle, hexagon, star)
-- `shape_size` - Size in pixels
-- `shape_color` - Color as hex (#FFFFFF) or RGB (255,255,255)
-- `bg_color` - Background color
-
-#### Optional
-- `blur_radius` - Gaussian blur strength
-- `trail_length` - Motion trail effect (0.0-1.0)
-- `rotation_speed` - Shape rotation over time
-- `border_width` - Border thickness
-- `border_color` - Border color
-- `paths_data` - JSON data from path editor (auto-managed)
+- `frame_width` & `frame_height` - Frame dimensions that the output coordinates will be resized to
+- `frame_count` - Number of frames that the motion path will be resampled to
 
 ### Outputs
+1. **TRACKS** - Motion paths formated for native [**"WanMoveTrackToVideo"**](https://docs.comfy.org/built-in-nodes/WanMoveTrackToVideo) nodes - includes visability info
+2. **COORDINATES** - Raw coordinate data for use with [**"comfyui_cotraker_node"**](https://github.com/s9roll7/comfyui_cotracker_node) pack - no visibility info
+   - **PerlinCoordinateRandomizerNode**
+   - **XYMotionAmplifierNode**
+4. **DEBUG** - Raw path data from the Path Animator Editor (JavaScript) before being resampled by the node (Python)
 
-1. **IMAGE** - Batch of rendered frames (shape following paths)
-2. **MASK** - Alpha masks extracted from red channel
-3. **STRING** - ~~WAN ATI-compatible coordinate data (121 points per path)~~
+## 4) Path Animation Editor
+### Keyboard Shortcuts:
+- **ESC** - Save paths and close editor
+- **SHIFT (hold)** - Draw straight lines (can be pressed intermittently)
+- **Ctrl+V** - Paste background image from clipboard
 
-## ~~WAN ATI Integration~~
+### Toolbar:
+#### ✏️ Pencil Tool
+Draw motion paths by clicking and dragging.
+- Hold **SHIFT** to constrain to straight lines, can be pressed intermittently so you can go from hand drawn to straight lines along a single path.
 
-~~The coordinate output is specifically formatted for WAN (Warp and Noise) ATI video generation:~~
+#### 📍 Point Tool
+Click once to create a single anchor point. 
+- Useful when you don't want an element to move in the video.
+- Compatible with Spread and Visibiliity options
 
-- ~~Each path is resampled to exactly 121 points~~
-- ~~Arc-length parameterization ensures smooth motion~~
-- ~~Static points are repeated 121 times for stable anchors~~
-- ~~Output format: `[[{x, y}, ...], [{x, y}, ...]]` (array of tracks)~~
+#### ↖️ Select Tool
+Directly select paths in the canvas to open their parameters in the sidebar.
 
-~~This prevents jitter and warping in AI-generated video by providing consistent tracking data.~~
+#### 🔒 Lock Perimeter
+Automatically distributes N static anchor points evenly around the canvas border. Useful for fixing frame edges in place.
 
-## Path Editor Tools
+#### 🗑️ Clear All
+Deletes all Paths and Static tracks.
 
-### ✏️ Pencil Tool
-Draw continuous motion paths by clicking and dragging. Shapes will smoothly follow these paths over the animation duration.
+### Sidebar:
+#### 🕗 Timeline Range
+Sets the Start and End points of the animation as a percentage of the `frame_count`. Use the visual slider or set exact values in the numerical fields.
 
-- Minimum 3px spacing between points for smoothing
-- Hold SHIFT to constrain to straight lines
+#### 🧈 Spread
+Creates duplicate tracks parallel to the movement of the path. 
+- Quantities are in units of 2, as pairs are added outward from the center
+- The spread value is the distance between paths scaled proportional to `frame_width` x `frame_height`
 
-### 📍 Point Tool
-Click once to create a static anchor point. Shapes at these positions won't move, useful for border stability in video generation.
+#### 📈 Custom Easing Curve
+Basic animation curve to control the rate and direction of movement.
+- Y-Dimension (vertical, position), defines the position of the point along the Path
+- X-Dimension (horizontal, time), defines when along the Timeline should the point be at the position along the path, as a proportion of `frame_count`
+- `Start Y` & `End Y` - Define where along the path you want the animation to Start/End
+- `Start H.X` & `Start H.Y` - Set the X/Y coordinates for the Bezier Handles that define the curve from the Start point
+- `End H.X` & `End H.Y` - Set the X/Y coordinates for the Bezier Handles that define the curve from the End point
 
-### 🗑️ Eraser Tool
-Click on any path to delete it.
+## 5) Examples
+![wanMove_path_animator_example-01-single_linear.webp](assets/wanMove_path_animator_example-01-single_linear.webp)
+![wanMove_path_animator_example-02-single_reverse.webp](assets/wanMove_path_animator_example-02-single_reverse.webp)
+![wanMove_path_animator_example-03-single_non-linear.webp](assets/wanMove_path_animator_example-03-single_non-linear.webp)
+![wanMove_path_animator_example-04-timeline_1_(pop).webp](assets/wanMove_path_animator_example-04-timeline_1_(pop).webp)
+![wanMove_path_animator_example-05-timeline_2_(static).webp](assets/wanMove_path_animator_example-05-timeline_2_(static).webp)
+![wanMove_path_animator_example-07-spread_2_(extra).webp](assets/wanMove_path_animator_example-07-spread_2_(extra).webp)
+![wanMove_path_animator_example-08-timeline_3_(cont).webp](assets/wanMove_path_animator_example-08-timeline_3_(cont).webp)
+![wanMove_path_animator_example-09-lock_perimeter.webp](assets/wanMove_path_animator_example-09-lock_perimeter.webp)
 
-### ↖️ Select Tool
-Click paths to inspect details:
-- Neon green highlight
-- Point count and numbering
-- Path type indicator
-
-### 🔒 Lock Perimeter
-Automatically distributes N static anchor points evenly around the canvas border. Useful for WAN video generation to stabilize frame edges.
+![wanMove_path_animator_example-10-easeIn.webp](assets/wanMove_path_animator_example-10-easeIn.webp)
+![wanMove_path_animator_example-11-easeOut.webp](assets/wanMove_path_animator_example-11-easeOut.webp)
+![wanMove_path_animator_example-12-easeInOut.webp](assets/wanMove_path_animator_example-12-easeInOut.webp)
+![wanMove_path_animator_example-13-easeOutIn.webp](assets/wanMove_path_animator_example-13-easeOutIn.webp)
 
 ## Technical Details
-
-- **Path Resampling**: Arc-length parameterization for constant-speed motion
-- **Canvas Scaling**: Paths automatically scale from editor coordinates to output frame size
-- **Background Cache**: Uploaded/pasted images persist across editor sessions
-- **Animated Preview**: Directional flow indicators show path direction in real-time
 
 ## Requirements
 
