@@ -20,7 +20,7 @@ A ComfyUI custom node for creating motion tracks to be used with [Wan-Move](http
 <details open>
 <summary><h2>FEATURES</h2></summary>
 
-- **Interactive Path Editor** - Visual interface for drawing motion paths and static anchor points.
+- **Interactive Path Editor** - Visual interface for drawing motion paths. 
 - **Path Types**:
     - **Motion Paths** - Draw continuous paths for animation to follow.
     - **Static Anchors** - Lock stationary elements in place.
@@ -73,7 +73,7 @@ git clone https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator
 
 ⚠️ Widget inputs are compatible with **"Set"** & **"Get"** nodes, but are not compatible with **"Anything Everywhere"** nodes due to JavaScript limitations.
 
-ℹ️ Paths are resized to the canvas based on `frame_width` & `frame_height`. This means if you draw your path in one canvas size, and then change the dimensions, the path will be rezied to fit proportionally to the new canvas size.
+ℹ️ Paths are resized to the canvas based on `frame_width` & `frame_height`. This means if you draw a path in one canvas size, and then change the dimensions, the path will be rezied to fit proportionally to the new canvas size.
 
 </details>
 <br>
@@ -240,7 +240,7 @@ Spread widens the effect of the path by creating duplicates (`Qty` 6, `Spread` 6
 <details open>
 <summary><b>Visibility Mode Pop</b></summary>
 
-Visibility mode only comes into effect if a **Timeline Range** is set (example: `Start%` 33, `End %` 67). If there's a gap in the begining of the timeline, Wan-Move will try to lead into the animation. If theres a gap at the end, it will follow through.
+Visibility mode only comes into effect if the **Timeline Range** is set (example: `Start%` 33, `End %` 66). If there's a gap in the begining of the timeline, Wan-Move will try to lead into the animation. If theres a gap at the end, it will follow through.
 ![wanMove_path_animator_example-08-visPop.webp](assets/wanMove_path_animator_example-08-visPop.webp)
 </details>
 
@@ -256,7 +256,7 @@ Setting visibility to "Static" keeps the point on screen before and after the an
 <details open>
 <summary><b>Continuous Zoom</b></summary>
 
-By making 2 sets of paths radiating outwards, one set **ending** at 50% and the other **starting** at 50% for the `Timeline Range`, you can create a zoom effect.
+By making 2 sets of paths radiating outwards, the `Timeline Range` of one group **ending** at 50% and the other **starting** at 50%, creates a zoom effect.
 ![wanMove_path_animator_example-10-timeline.webp](assets/wanMove_path_animator_example-10-timeline.webp)
 </details>
 
@@ -280,4 +280,6 @@ By locking the perimeter with points, it pins the frame creating a static camera
 - Kijai scaled model: [WanMove](https://huggingface.co/Kijai/WanVideo_comfy_fp8_scaled/tree/main/WanMove)
 - Coding assistance using Gemini 3.1 Pro Preview.
 - Special thanks to the [Banadoco](https://www.banodoco.ai/) community on Discord.
+
+[↑ Back to Top](#top)
 </details>
