@@ -1,18 +1,19 @@
 <a id="top"></a>
 # WanMove Path Animator
-A ComfyUI custom node for creating motion tracks to be used with [Wan-Move](https://github.com/ali-vilab/Wan-Move) based on [FL Path Animator](https://github.com/filliptm/ComfyUI_FL-Path-Animator).  
+A ComfyUI custom node for creating motion tracks to be used with [Wan-Move](https://github.com/ali-vilab/Wan-Move).
 
-- **[FEATURES](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#features)**
-- **[INSTALLATION](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#installation)**
-- **[USAGE](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#usage)**
-    - [Basic Workflow](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#basic-workflow)
-    - [Node Parameters](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#node-parameters)
-    - [Outputs](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#outputs)
-- **[PATH ANIMATOR EDITOR](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#path-animator-editor)**
-    - [Keyboard Shortcuts](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#keyboard-shortcuts)
-    - [Toolbar](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#toolbar)
-    - [Sidebar](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#sidebar)
-- **[EXAMPLES](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#examples)**
+- **[FEATURES](#features)**
+- **[INSTALLATION](#installation)**
+- **[USAGE](#usage)**
+    - [Basic Workflow](#basic-workflow)
+    - [Node Parameters](#node-parameters)
+    - [Outputs](#outputs)
+- **[PATH ANIMATOR EDITOR](#path-animator-editor)**
+    - [Keyboard Shortcuts](#keyboard-shortcuts)
+    - [Toolbar](#toolbar)
+    - [Sidebar](#sidebar)
+- **[EXAMPLES](#examples)**
+- **[ACKNOWLEDGEMENTS](#acknowledgements)**
 
 ![wanMove_path_animator_header.webp](assets/wanMove_path_animator_header.webp)
 
@@ -49,6 +50,8 @@ git clone https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator
 
 <details open>
 <summary><h2>USAGE</h2></summary>
+
+**📢 Example workflow can be found in the [workflows folder](/workflows)**
 <details open>
 <summary><h3>Basic Workflow:</h3></summary>
 
@@ -56,11 +59,11 @@ git clone https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator
 2. Connect image to image input to appear in background.
 3. Click the **"Edit Paths"** button to open the path editor
 4. Optionally load a background image with **🖼️** or paste with **Ctrl+V** (only if there's no image input)
-5. Use the [toolbar](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#toolbar) to:
+5. Use the [Toolbar](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#toolbar) to:
     - **✏️ Pencil** - Draw motion paths (hold SHIFT for straight lines)
     - **📍 Point** - Add static anchor points
     - **🔒 Lock Perimeter** - Auto-generate static points around border
-6. Use [sidebar](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#sidebar) to:
+6. Use [Sidebar](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#sidebar) to:
     - **🕗 Timeline Range** - Control the Start and End point of the animation
     - **📈 Custom Easing Curve** - Control the dynamic speed of the animation
     - **🧈 Spread** - Create parallel paths
@@ -68,10 +71,9 @@ git clone https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator
 8. Press **ESC**, or click **Save Paths** to save and close
 9. Connect outputs to your workflow
 </details>
-
+<br>
 
 ![wanMove_path_animator_node.webp](assets/wanMove_path_animator_node.webp)
-
 <details open>
 <summary><h3>Node Parameters:</h3></summary>
 
@@ -217,7 +219,7 @@ Fast - Slow - Fast
 <details open>
 <summary><b>Ping-Pong</b></summary>
 
-Forward - Reverse - Forward
+Forward - Reverse - Forward (TIP: Handles for the curve can be adjusted outside the window by manually setting the value fields)
 ![wanMove_path_animator_example-07-pingPong.webp](assets/wanMove_path_animator_example-07-pingPong.webp)
 </details>
 
@@ -233,7 +235,7 @@ Spread widens the effect of the path by creating duplicates (`Qty` 6, `Spread` 6
 <details open>
 <summary><b>Visibility Mode Pop</b></summary>
 
-Visibility mode only comes into effect if `Timeline Range` is set (`Start%` 33, `End %` 67). If there's a gap in the beggining of the Timeline, Wan-Move will lead into the animation. If theres a gap in the end, it will follow through.
+Visibility mode only comes into effect if `Timeline Range` is set (`Start%` 33, `End %` 67). If there's a gap in the begining of the Timeline, Wan-Move will lead into the animation. If theres a gap at the end, it will follow through.
 ![wanMove_path_animator_example-08-visPop.webp](assets/wanMove_path_animator_example-08-visPop.webp)
 </details>
 
@@ -241,7 +243,7 @@ Visibility mode only comes into effect if `Timeline Range` is set (`Start%` 33, 
 <details open>
 <summary><b>Visibility Mode Static</b></summary>
 
-Setting visibility to "Static" pins the frame at the beginning and end of the animation
+Setting visibility to "Static" the point remains at the beginning and end of the animation
 ![wanMove_path_animator_example-09-visStatic.webp](assets/wanMove_path_animator_example-09-visStatic.webp)
 </details>
 
@@ -249,7 +251,7 @@ Setting visibility to "Static" pins the frame at the beginning and end of the an
 <details open>
 <summary><b>Continuous Zoom</b></summary>
 
-By making 2 sets of paths radiating outwards, one set **ending** at 50% and the other **starting** at 50%, you can create a zoom effect
+By making 2 sets of paths radiating outwards, one set **ending** at 50% and the other **starting** at 50% for the `Timeline Range`, you can create a zoom effect
 ![wanMove_path_animator_example-10-timeline.webp](assets/wanMove_path_animator_example-10-timeline.webp)
 </details>
 
@@ -258,8 +260,22 @@ By making 2 sets of paths radiating outwards, one set **ending** at 50% and the 
 <summary><b>Perimeter Lock</b></summary>
 
 By locking the perimeter with points, it pins the frame creating a static camera shot
+
+
+
 ![wanMove_path_animator_example-11-perimeter.webp](assets/wanMove_path_animator_example-11-perimeter.webp)
 </details>
 
 [↑ Back to Top](#top)
+</details>
+
+
+<details open>
+<summary><h2>ACKNOWLEDGEMENTS</h2></summary>
+
+- Node based off Machine Delusion's original: [ComfyUI_FL-Path-Animator](https://github.com/filliptm/ComfyUI_FL-Path-Animator)
+- Wan-Move project: [Wan-Move](https://github.com/ali-vilab/Wan-Move)
+- Kijai scaled model: [WanMove](https://huggingface.co/Kijai/WanVideo_comfy_fp8_scaled/tree/main/WanMove)
+- Coding assistance using Gemini 3.1 Pro Preview
+- Special thanks to the [Banadoco](https://www.banodoco.ai/) community on Discord
 </details>
