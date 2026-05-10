@@ -5,13 +5,13 @@ A ComfyUI custom node for creating motion tracks to be used with [Wan-Move](http
 - **[FEATURES](#features)**
 - **[INSTALLATION](#installation)**
 - **[USAGE](#usage)**
-    - [Basic Workflow](#basic-workflow)
-    - [Node Parameters](#node-parameters)
-    - [Outputs](#outputs)
+    - **[Basic Workflow](#basic-workflow)**
+    - **[Node Parameters](#node-parameters)**
+    - **[Outputs](#outputs)**
 - **[PATH ANIMATOR EDITOR](#path-animator-editor)**
-    - [Keyboard Shortcuts](#keyboard-shortcuts)
-    - [Toolbar](#toolbar)
-    - [Sidebar](#sidebar)
+    - **[Keyboard Shortcuts](#keyboard-shortcuts)**
+    - **[Toolbar](#toolbar)**
+    - **[Sidebar](#sidebar)**
 - **[EXAMPLES](#examples)**
 - **[ACKNOWLEDGEMENTS](#acknowledgements)**
 
@@ -71,7 +71,7 @@ git clone https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator
 8. Press **ESC**, or click **Save Paths** to save and close.
 9. Connect outputs to your workflow.
 
-⚠️ Widget inputs are compatible with "Set" & "Get" nodes, but are not compatible with "Anything Everywhere" nodes due to JavaScript limitations.
+⚠️ Widget inputs are compatible with **"Set"** & **"Get"** nodes, but are not compatible with **"Anything Everywhere"** nodes due to JavaScript limitations.
 
 ℹ️ Paths are resized to the canvas based on `frame_width` & `frame_height`. This means if you draw your path in one canvas size, and then change the dimensions, the path will be rezied to fit proportionally to the new canvas size.
 
