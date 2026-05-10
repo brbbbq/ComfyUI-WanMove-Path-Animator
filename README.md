@@ -192,7 +192,7 @@ Reverse animation by setting `Start Y` & `Start H.Y` to 1.00, and `End Y` & `End
 <details open>
 <summary><b>Ease In</b></summary>
 
-Slow animation that ramps up to fast.
+Slow animation that ramps up speed.
 ![wanMove_path_animator_example-03-easeIn.webp](assets/wanMove_path_animator_example-03-easeIn.webp)
 </details>
 
@@ -200,7 +200,7 @@ Slow animation that ramps up to fast.
 <details open>
 <summary><b>Ease Out</b></summary>
 
-Fast animation that decelerates to slow.
+Fast animation that decelerates.
 ![wanMove_path_animator_example-04-easeOut.webp](assets/wanMove_path_animator_example-04-easeOut.webp)
 </details>
 
