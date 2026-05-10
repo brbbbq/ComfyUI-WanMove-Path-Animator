@@ -469,24 +469,7 @@ class PathEditorModal {
             el('div', { className: 'wm-grid-2' }, fStart.wrap, fEnd.wrap)
         );
 
-        // Track Params
-        const fQty = this.createField('Qty', path.qty || 0, { step:2, min:0, max:100 });
-        const fSpr = this.createField('Spread', (path.spread !== undefined ? path.spread : 1.50).toFixed(2), { step:0.10 });
-        
-        const updateParams = () => {
-            path.qty = Math.max(0, Math.min(100, Math.round((parseInt(fQty.inp.value) || 0) / 2) * 2));
-            path.spread = parseFloat(fSpr.inp.value) || 1.50;
-            fQty.inp.value = path.qty;
-            this.savePaths(); this.render();
-        };
-
-        fQty.inp.addEventListener('change', updateParams);
-        fSpr.inp.addEventListener('change', updateParams);
-        fSpr.inp.addEventListener('blur', () => { updateParams(); fSpr.inp.value = path.spread.toFixed(2); });
-
-        timelineSec.appendChild(el('div', { className: 'wm-grid-2', style: 'border-top:1px solid rgba(255,255,255,0.1); padding-top:6px;' }, fQty.wrap, fSpr.wrap));
         container.appendChild(timelineSec);
-
         const isSingle = path.isSinglePoint || path.points.length === 1;
 
         // Bezier Curve
@@ -513,6 +496,26 @@ class PathEditorModal {
                 el('div', { className: 'wm-grid-2' }, bRefs.sY.wrap, bRefs.eY.wrap, bRefs.h1X.wrap, bRefs.h2X.wrap, bRefs.h1Y.wrap, bRefs.h2Y.wrap)
             ));
         }
+
+        // Spread Params
+        const fQty = this.createField('Qty', path.qty || 0, { step:2, min:0, max:100 });
+        const fSpr = this.createField('Spread', (path.spread !== undefined ? path.spread : 1.50).toFixed(2), { step:0.10 });
+        
+        const updateParams = () => {
+            path.qty = Math.max(0, Math.min(100, Math.round((parseInt(fQty.inp.value) || 0) / 2) * 2));
+            path.spread = parseFloat(fSpr.inp.value) || 1.50;
+            fQty.inp.value = path.qty;
+            this.savePaths(); this.render();
+        };
+
+        fQty.inp.addEventListener('change', updateParams);
+        fSpr.inp.addEventListener('change', updateParams);
+        fSpr.inp.addEventListener('blur', () => { updateParams(); fSpr.inp.value = path.spread.toFixed(2); });
+
+        container.appendChild(el('div', { style: 'display:flex; flex-direction:column; gap:6px;' },
+            el('label', { className: 'wm-label', textContent: 'Spread' }),
+            el('div', { className: 'wm-grid-2' }, fQty.wrap, fSpr.wrap)
+        ));
 
         // Visibility Mode
         const visSel = el('select', { style: 'background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; padding:6px; font-size:11px; cursor:pointer;', onchange: e => { e.stopPropagation(); path.visibilityMode = e.target.value; this.savePaths(); } },
