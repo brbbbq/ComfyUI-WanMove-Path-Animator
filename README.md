@@ -1,38 +1,49 @@
+<a id="top"></a>
 # WanMove Path Animator
-A ComfyUI custom node for creating motion tracks to be used with [Wan-Move](https://github.com/ali-vilab/Wan-Move) based on [FL Path Animator](https://github.com/filliptm/ComfyUI_FL-Path-Animator).
-1) [Features](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#1-features)
-2) [Installation](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#2-installation)
-3) [Usage](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#3-usage)
-4) [Path Animator Editor](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#4-pathh-animator-editor)
-5) [Examples](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#5-examples)
-6) [License](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#6-license)
+A ComfyUI custom node for creating motion tracks to be used with [Wan-Move](https://github.com/ali-vilab/Wan-Move) based on [FL Path Animator](https://github.com/filliptm/ComfyUI_FL-Path-Animator).  
+
+**[FEATURES](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#features)**  
+**[INSTALLATION](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#installation)**  
+**[USAGE](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#usage)**  
+**[PATH ANIMATOR EDITOR](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#path-animator-editor)**  
+**[EXAMPLE](https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator#examples)**  
 
 ![wanMove_path_animator_header.webp](assets/wanMove_path_animator_header.webp)
 
+<details open>
+<summary><h2>FEATURES</h2></summary>
 
-## 1) Features
-- **Interactive Path Editor** - Visual modal interface for drawing motion paths and static anchor points
-- **Two Path Types**:
-    - **Motion Paths** - Draw continuous paths for shapes to follow over time
-    - **Static Anchors** - Single-point paths for stationary shapes
-- **Background Image Support** - Input, load, or paste reference images to draw paths on
-- **Timeline Start & End** - Set when the animation begins and finishes
+- **Interactive Path Editor** - Visual interface for drawing motion paths and static anchor points
+- **Path Types**:
+    - **Motion Paths** - Draw continuous paths for animation to follow
+    - **Static Anchors** - Lock stationary elements in place
+- **Background Image Support** - Input, load, or paste reference images in the background
+- **Timeline Start & End** - Set when the animation begins and ends
 - **Animation Curves** - Control the speed and direction of the animation
 - **Path Spread** - Duplicate paths to widen their effects
-- **Visibility** - Modes for 
+- **Visibility** - Control when the paths appear in the timeline
 
-## 2) Installation
+[↑ Back to Top](#top)
+
+</details>
+
+<details open>
+<summary><h2>INSTALLATION</h2></summary>
+
 1. Clone or download this repository into your ComfyUI custom_nodes folder:
-<code>
+```cli
 cd ComfyUI/custom_nodes/
 git clone https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator
-</code>
-
+```
 2. Restart ComfyUI
 
-<br>
+[↑ Back to Top](#top)
 
-## 3) Usage
+</details>
+
+<details open>
+<summary><h2>USAGE</h2></summary>
+
 ### Basic Workflow:
 1. Add the **"WanMove Path Animator"** node to your workflow
 2. Connect image to image input to appear in background.
@@ -57,13 +68,19 @@ git clone https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator
 - `frame_count` - Number of frames that the motion path will be resampled to (should be equal to the project length)
 
 ### Outputs:
-1. **TRACKS** - Motion paths formated for native [**"WanMoveTrackToVideo"**](https://docs.comfy.org/built-in-nodes/WanMoveTrackToVideo) nodes (includes visability info)
-2. **COORDINATES** - Raw coordinate data for use with [**"comfyui_cotracker_node"**](https://github.com/s9roll7/comfyui_cotracker_node) pack (no visibility info)
-   - **PerlinCoordinateRandomizerNode**
-   - **XYMotionAmplifierNode**
-4. **DEBUG** - Raw path data from the Path Animator Editor (JavaScript) before being resampled by the node (Python)  
+- **TRACKS** - Motion paths formated for native [**"WanMoveTrackToVideo"**](https://docs.comfy.org/built-in-nodes/WanMoveTrackToVideo) nodes (includes visability info)
+- **COORDINATES** - Raw coordinate data for use with [**"comfyui_cotracker_node"**](https://github.com/s9roll7/comfyui_cotracker_node) pack (no visibility info)
+    - **PerlinCoordinateRandomizerNode**
+    - **XYMotionAmplifierNode**
+- **DEBUG** - Raw path data from the Path Animator Editor (JavaScript) before being resampled by the node (Python)  
 
-## 4) Path Animation Editor
+[↑ Back to Top](#top)
+
+</details>
+
+<details open>
+<summary><h2>PATH ANIMATOR EDITOR</h2></summary>
+
 ![wanMove_path_animator_editor.webp](assets/wanMove_path_animator_editor.webp)
 ### Keyboard Shortcuts:
 - **ESC** - Save paths and close editor
@@ -108,43 +125,97 @@ git clone https://github.com/brbbbq/ComfyUI-WanMove-Path-Animator
 - **Static Mode** - Path/Point will remain visible through the whole video
 - Useful for creating continuous movement over the same area of the frame, or stringing together complex movements
 
-## 5) Examples
-### Linear
+[↑ Back to Top](#top)
+
+</details>
+
+<details open>
+<summary><h2>EXAMPLES</h2></summary>
+
+<details open>
+<summary><h3>Linear</h3></summary>
+
 ![wanMove_path_animator_example-01-linear.webp](assets/wanMove_path_animator_example-01-linear.webp)
 
-### Reverse
+</details>
+
+<details open>
+<summary><h3>Reverse</h3></summary>
+
 ![wanMove_path_animator_example-02-reverse.webp](assets/wanMove_path_animator_example-02-reverse.webp)
 
-### Ease In
+</details>
+
+<details open>
+<summary><h3>Ease In</h3></summary>
+
 ![wanMove_path_animator_example-03-easeIn.webp](assets/wanMove_path_animator_example-03-easeIn.webp)
 
-### Ease Out
+</details>
+
+<details open>
+<summary><h3>Ease Out</h3></summary>
+
 ![wanMove_path_animator_example-04-easeOut.webp](assets/wanMove_path_animator_example-04-easeOut.webp)
 
-### Ease In-Out
+</details>
+
+<details open>
+<summary><h3>Ease In-Out</h3></summary>
+
 ![wanMove_path_animator_example-05-easeInOut.webp](assets/wanMove_path_animator_example-05-easeInOut.webp)
 
-### Ease Out-In
+</details>
+
+<details open>
+<summary><h3>Ease Out-In</h3></summary>
+
 ![wanMove_path_animator_example-06-easeOutIn.webp](assets/wanMove_path_animator_example-06-easeOutIn.webp)
 
-### Ping-Pong
+</details>
+
+<details open>
+<summary><h3>Ping-Pong</h3></summary>
+
 ![wanMove_path_animator_example-07-pingPong.webp](assets/wanMove_path_animator_example-07-pingPong.webp)
 
-### Spread
+</details>
+
+<details open>
+<summary><h3>Spread</h3></summary>
+
 ![wanMove_path_animator_example-12-spread.webp](assets/wanMove_path_animator_example-12-spread.webp)
 
-### Visibility Mode Pop
+</details>
+
+<details open>
+<summary><h3>Visibility Mode Pop</h3></summary>
+
 ![wanMove_path_animator_example-08-visPop.webp](assets/wanMove_path_animator_example-08-visPop.webp)
 
-### Visibility Mode Static
+</details>
+
+<details open>
+<summary><h3>Visibility Mode Static</h3></summary>
+
 ![wanMove_path_animator_example-09-visStatic.webp](assets/wanMove_path_animator_example-09-visStatic.webp)
 
-### Timeline
+</details>
+
+<details open>
+<summary><h3>Timeline</h3></summary>
+
 ![wanMove_path_animator_example-10-timeline.webp](assets/wanMove_path_animator_example-10-timeline.webp)
 
-### Perimeter Lock
+</details>
+
+<details open>
+<summary><h3>Perimeter Lock</h3></summary>
+
 ![wanMove_path_animator_example-11-perimeter.webp](assets/wanMove_path_animator_example-11-perimeter.webp)
 
+</details>
 
-## 6) License
-MIT License - See LICENSE file for details
+[↑ Back to Top](#top)
+
+</details>
