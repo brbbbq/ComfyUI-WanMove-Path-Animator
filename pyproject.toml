@@ -1,8 +1,8 @@
 [project]
 name = "comfyui-wanmove-path-animator"
-description = "Interactive path animator with visual editor for creating animated shapes that follow user-drawn paths. Wan Move compatible for stable video generation."
-version = "1.0.6"
-license = { file = "LICENSE.txt" }
+description = "Interactive path animator with visual editor for creating tracks to be used with Wan-Move video generation."
+version = "1.0.0"
+license = { file = "LICENSE" }
 dependencies = [
     "Pillow>=9.0.0",
     "numpy>=1.20.0"
