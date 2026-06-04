@@ -1,6 +1,11 @@
 import math
 import json
 import torch
+import os
+import random
+import numpy as np
+from PIL import Image
+import folder_paths
 
 # ==========================================
 # 1. CONFIGURATION & CONSTANTS
@@ -152,6 +157,7 @@ class WanMove_PathAnimator:
     RETURN_NAMES = ("tracks", "coordinates", "debug")
     FUNCTION = "animate_paths"
     CATEGORY = "WanMove Path Animator"
+    OUTPUT_NODE = True
     DESCRIPTION = """
 Creates animated points that follow user-drawn paths.
 Open the path editor to draw trajectories on a reference image, then points will follow these paths over time.
@@ -171,6 +177,24 @@ Includes custom Bezier easing support and timeline visibility controls.
                 "paths_data": ("STRING", {"default": '{"paths":[], "canvas_size": {"width": 512, "height": 512}}', "multiline": True}),
             }
         }
+
+    @classmethod
+    def IS_CHANGED(cls, frame_width, frame_height, frame_count, paths_data='{"paths":[], "canvas_size": {"width": 512, "height": 512}}', image=None):
+        import hashlib
+        m = hashlib.sha256()
+        m.update(str(frame_width).encode('utf-8'))
+        m.update(str(frame_height).encode('utf-8'))
+        m.update(str(frame_count).encode('utf-8'))
+        m.update(str(paths_data).encode('utf-8'))
+        
+        if image is not None:
+            m.update(str(image.shape).encode('utf-8'))
+            try:
+                m.update(str(float(image.sum())).encode('utf-8'))
+            except Exception:
+                pass
+                
+        return m.hexdigest()
 
     def animate_paths(self, frame_width, frame_height, frame_count, paths_data='{"paths":[], "canvas_size": {"width": 512, "height": 512}}', image=None):
         
@@ -256,4 +280,27 @@ Includes custom Bezier easing support and timeline visibility controls.
 
         print(f"WanMove_PathAnimator: Generated {len(coord_tracks)} tracks for Wan-Move")
 
-        return ({"track_path": tracks_tensor, "track_visibility": track_visibility}, coord_string, paths_data)
+        temp_images = []
+        if image is not None and len(image) > 0:
+            img_tensor = image[0]
+            img_np = (255. * img_tensor.cpu().numpy()).clip(0, 255).astype(np.uint8)
+            img_pil = Image.fromarray(img_np)
+            
+            temp_dir = folder_paths.get_temp_directory()
+            os.makedirs(temp_dir, exist_ok=True)
+            
+            prefix = "wanmove_preview_" + "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=10))
+            filename = f"{prefix}.png"
+            filepath = os.path.join(temp_dir, filename)
+            img_pil.save(filepath, compress_level=4)
+            
+            temp_images.append({
+                "filename": filename,
+                "subfolder": "",
+                "type": "temp"
+            })
+
+        return {
+            "ui": {"images": temp_images},
+            "result": ({"track_path": tracks_tensor, "track_visibility": track_visibility}, coord_string, paths_data)
+        }

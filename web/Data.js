@@ -105,10 +105,16 @@ export const ComfyUtils = {
         if (origWidget && origWidget.value !== undefined) return origWidget.value;
         return defaultValue;
     },
-    getConnectedImageUrl(node, inputName = "image") {
+   getConnectedImageUrl(node, inputName = "image") {
         if (!node.inputs) return null;
         const imgInput = node.inputs.find(i => i.name === inputName);
         if (!imgInput || imgInput.link === null) return null;
+        
+        if (node.imgs?.length > 0) {
+            const img = node.imgs[0];
+            if (typeof img === "string") return img;
+            if (img && typeof img === "object" && img.src) return img.src;
+        }
         
         let curr = app.graph.getNodeById(app.graph.links[imgInput.link]?.origin_id);
         const visited = new Set();
