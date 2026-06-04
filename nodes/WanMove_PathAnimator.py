@@ -301,6 +301,6 @@ Includes custom Bezier easing support and timeline visibility controls.
             })
 
         return {
-            "ui": {"images": temp_images},
+            "ui": {"wanmove_preview": temp_images},
             "result": ({"track_path": tracks_tensor, "track_visibility": track_visibility}, coord_string, paths_data)
         }

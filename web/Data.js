@@ -7,6 +7,22 @@
 import { app } from "../../../../../scripts/app.js";
 import { api } from "../../../../../scripts/api.js";
 
+app.registerExtension({
+    name: "WanMove.PathAnimator.HiddenPreview",
+    async beforeRegisterNodeDef(nodeType, nodeData, app) {
+        if (nodeData.name === "WanMove_PathAnimator") {
+            const onExecuted = nodeType.prototype.onExecuted;
+            nodeType.prototype.onExecuted = function(message) {
+                if (onExecuted) onExecuted.apply(this, arguments);
+                if (message?.wanmove_preview?.length > 0) {
+                    const val = message.wanmove_preview[0];
+                    this.wanmove_bg_url = api.apiURL(`/view?${new URLSearchParams(val).toString()}`);
+                }
+            };
+        }
+    }
+});
+
 export const CONFIG = {
     DEFAULT_SIZE: 512,
     DEFAULT_BEZIER: [0.0, 0.0, 0.0, 1.0, 1.0, 1.0],
@@ -110,6 +126,8 @@ export const ComfyUtils = {
         const imgInput = node.inputs.find(i => i.name === inputName);
         if (!imgInput || imgInput.link === null) return null;
         
+        if (node.wanmove_bg_url) return node.wanmove_bg_url;
+
         if (node.imgs?.length > 0) {
             const img = node.imgs[0];
             if (typeof img === "string") return img;
