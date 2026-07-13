@@ -153,8 +153,8 @@ class PathStateFactory:
 # ==========================================
 class WanMove_PathAnimator:
 
-    RETURN_TYPES = ("TRACKS", "STRING", "STRING")
-    RETURN_NAMES = ("tracks", "coordinates", "debug")
+    RETURN_TYPES = ("TRACKS", "STRING", "STRING", "STRING")
+    RETURN_NAMES = ("tracks", "coordinates", "debug", "info")
     FUNCTION = "animate_paths"
     CATEGORY = "WanMove Path Animator"
     OUTPUT_NODE = True
@@ -300,7 +300,9 @@ Includes custom Bezier easing support and timeline visibility controls.
                 "type": "temp"
             })
 
+        info_string = f"Paths Count: {len(paths)}\nFrame Count: {frame_count}"
+
         return {
             "ui": {"wanmove_preview": temp_images},
-            "result": ({"track_path": tracks_tensor, "track_visibility": track_visibility}, coord_string, paths_data)
+            "result": ({"track_path": tracks_tensor, "track_visibility": track_visibility}, coord_string, paths_data, info_string)
         }
